@@ -1,0 +1,400 @@
+Option Explicit
+
+'==============================================================================
+' modExport v2 — выгрузка VBA-проекта в UTF-8 БЕЗ BOM.
+'   ExportAllVBA_ToFile   — ОДИН ФАЙЛ НА МОДУЛЬ (листы -> общий _Sheets.txt)
+'   ExportVBA_ByKeyword   — только модули, содержащие ключевое слово
+'   ExportVBA_ProcByName  — одна процедура, все вхождения в ОДНОМ файле
+'   ExportVBA_ListProcs   — карта процедур (один файл)
+' Требование: Файл > Параметры > Центр управления безопасностью >
+'             Параметры макросов > "Доверять доступ к объектной модели проектов VBA"
+'==============================================================================
+
+Private Const EXP_ROOTNAME As String = "VBA_EXPORT_"
+
+'------------------------------------------------------------------------------
+' 1. ВЕСЬ ПРОЕКТ — по модулям, без дробления
+'------------------------------------------------------------------------------
+Public Sub ExportAllVBA_ToFile()
+    Dim desk As String, root As String
+    Dim vbc As Object, cm As Object
+    Dim txt As String, arr() As String
+    Dim i As Long, n As Long, cnt As Long
+    Dim fn As String, safeName As String
+    Dim sh() As String, nSh As Long
+    Dim idx() As String, ni As Long
+    Dim total As Long, nFiles As Long, nEmpty As Long, nMod As Long
+    Dim tAll As Double
+
+    On Error GoTo EH
+    tAll = Timer
+
+    desk = CreateObject("WScript.Shell").SpecialFolders("Desktop")
+    root = desk & "\" & EXP_ROOTNAME & Format(Now, "yyyy-mm-dd_hhnn") & "\"
+    If Dir(root, vbDirectory) = "" Then MkDir root
+
+    ReDim sh(0 To 8191): nSh = 0
+    ReDim idx(0 To 1023): ni = 0
+    EXP_Push idx, ni, "MODULE" & vbTab & "TYPE" & vbTab & "LINES" & vbTab & "CHARS" & vbTab & "FILE"
+
+    For Each vbc In ThisWorkbook.VBProject.VBComponents
+        Set cm = vbc.CodeModule
+        n = cm.CountOfLines
+        Application.StatusBar = "Экспорт: " & vbc.Name
+
+        If n = 0 Then
+            nEmpty = nEmpty + 1
+        Else
+            txt = EXP_NormNL(cm.lines(1, n))
+            arr = Split(txt, vbLf)
+            cnt = UBound(arr) + 1
+            total = total + cnt
+
+            If vbc.Type = 100 Then
+                ' листы и ThisWorkbook -> один общий файл
+                EXP_Push sh, nSh, "'============================================================"
+                EXP_Push sh, nSh, "'===== " & vbc.Name & "   (" & cnt & " строк)"
+                EXP_Push sh, nSh, "'============================================================"
+                For i = 0 To cnt - 1
+                    EXP_Push sh, nSh, arr(i)
+                Next i
+                EXP_Push sh, nSh, ""
+                EXP_Push idx, ni, vbc.Name & vbTab & "Document" & vbTab & cnt & _
+                                  vbTab & Len(txt) & vbTab & "_Sheets.txt"
+            Else
+                safeName = EXP_Safe(vbc.Name)
+                fn = safeName & ".txt"
+                EXP_WriteU8 root & fn, arr, 0, cnt - 1
+                nFiles = nFiles + 1
+                nMod = nMod + 1
+                EXP_Push idx, ni, vbc.Name & vbTab & EXP_TypeName(vbc.Type) & vbTab & cnt & _
+                                  vbTab & Len(txt) & vbTab & fn
+            End If
+        End If
+    Next vbc
+
+    If nSh > 0 Then
+        EXP_WriteU8 root & "_Sheets.txt", sh, 0, nSh - 1
+        nFiles = nFiles + 1
+    End If
+    EXP_Push idx, ni, ""
+    EXP_Push idx, ni, "TOTAL" & vbTab & "" & vbTab & total & vbTab & "" & vbTab & nFiles & " files"
+    EXP_WriteU8 root & "_INDEX.txt", idx, 0, ni - 1
+
+    Application.StatusBar = False
+    MsgBox "Готово." & vbCrLf & _
+           "Модулей выгружено: " & nMod & vbCrLf & _
+           "Листов/книга сведены в _Sheets.txt: " & IIf(nSh > 0, "да", "нет") & vbCrLf & _
+           "Пустых пропущено: " & nEmpty & vbCrLf & _
+           "Строк кода всего: " & total & vbCrLf & _
+           "ФАЙЛОВ: " & nFiles + 1 & " (включая _INDEX.txt)" & vbCrLf & _
+           "Кодировка: UTF-8 без BOM" & vbCrLf & _
+           "Время: " & Format(Timer - tAll, "0.0") & " с" & vbCrLf & vbCrLf & _
+           "Папка: " & root, vbInformation, "Экспорт VBA"
+    Exit Sub
+EH:
+    Application.StatusBar = False
+    MsgBox "Ошибка " & Err.Number & ": " & Err.Description & vbCrLf & vbCrLf & _
+           "Если ошибка на VBProject — включите:" & vbCrLf & _
+           "Файл > Параметры > Центр управления безопасностью > Параметры макросов >" & vbCrLf & _
+           "Доверять доступ к объектной модели проектов VBA.", vbCritical, "Экспорт VBA"
+End Sub
+
+'------------------------------------------------------------------------------
+' 2. ТОЛЬКО МОДУЛИ С КЛЮЧЕВЫМ СЛОВОМ (обычно 1-3 файла)
+'------------------------------------------------------------------------------
+Public Sub ExportVBA_ByKeyword()
+    Dim kw As String, desk As String, root As String
+    Dim vbc As Object, cm As Object
+    Dim txt As String, arr() As String
+    Dim n As Long, cnt As Long, hits As Long, fn As String
+    Dim idx() As String, ni As Long
+
+    On Error GoTo EH
+    kw = InputBox("Ключевое слово в коде модуля:" & vbCrLf & _
+                  "(например: code25, CG4_SolverTail, all_GS_count, Read_row)", _
+                  "Экспорт модулей по слову", "code25")
+    kw = Trim(kw)
+    If Len(kw) = 0 Then Exit Sub
+
+    desk = CreateObject("WScript.Shell").SpecialFolders("Desktop")
+    root = desk & "\" & EXP_ROOTNAME & "KW_" & EXP_Safe(kw) & "\"
+    If Dir(root, vbDirectory) = "" Then MkDir root
+
+    ReDim idx(0 To 511): ni = 0
+    EXP_Push idx, ni, "MODULE" & vbTab & "LINES" & vbTab & "FILE"
+
+    For Each vbc In ThisWorkbook.VBProject.VBComponents
+        Set cm = vbc.CodeModule
+        n = cm.CountOfLines
+        If n > 0 Then
+            txt = cm.lines(1, n)
+            If InStr(1, txt, kw, vbTextCompare) > 0 Then
+                txt = EXP_NormNL(txt)
+                arr = Split(txt, vbLf)
+                cnt = UBound(arr) + 1
+                fn = EXP_Safe(vbc.Name) & ".txt"
+                EXP_WriteU8 root & fn, arr, 0, cnt - 1
+                EXP_Push idx, ni, vbc.Name & vbTab & cnt & vbTab & fn
+                hits = hits + 1
+            End If
+        End If
+    Next vbc
+
+    If hits = 0 Then
+        MsgBox "Слово <" & kw & "> в коде не найдено.", vbExclamation
+    Else
+        EXP_WriteU8 root & "_INDEX.txt", idx, 0, ni - 1
+        MsgBox "Модулей найдено: " & hits & vbCrLf & "Папка: " & root, vbInformation
+    End If
+    Exit Sub
+EH:
+    MsgBox "Ошибка " & Err.Number & ": " & Err.Description, vbCritical
+End Sub
+
+'------------------------------------------------------------------------------
+' 3. ОДНА ПРОЦЕДУРА — все вхождения в ОДНОМ файле
+'------------------------------------------------------------------------------
+Public Sub ExportVBA_ProcByName()
+    Dim nm As String, desk As String, root As String
+    Dim vbc As Object, cm As Object
+    Dim i As Long, j As Long, k As Long, n As Long, sL As Long, eL As Long
+    Dim t As String, kind As String
+    Dim buf() As String, nb As Long, hits As Long
+
+    On Error GoTo EH
+    nm = InputBox("Имя процедуры (Sub / Function / Property):", "Экспорт процедуры", "code25")
+    nm = Trim(nm)
+    If Len(nm) = 0 Then Exit Sub
+
+    desk = CreateObject("WScript.Shell").SpecialFolders("Desktop")
+    root = desk & "\" & EXP_ROOTNAME & "PROC\"
+    If Dir(root, vbDirectory) = "" Then MkDir root
+
+    ReDim buf(0 To 8191): nb = 0
+    For Each vbc In ThisWorkbook.VBProject.VBComponents
+        Set cm = vbc.CodeModule
+        n = cm.CountOfLines
+        i = 1
+        Do While i <= n
+            t = LTrim(cm.lines(i, 1))
+            kind = ""
+            If EXP_IsStart(t, nm, kind) Then
+                sL = i
+                eL = 0
+                For j = i + 1 To n
+                    If EXP_IsEnd(LTrim(cm.lines(j, 1)), kind) Then eL = j: Exit For
+                Next j
+                If eL = 0 Then eL = n
+                hits = hits + 1
+                EXP_Push buf, nb, "'============================================================"
+                EXP_Push buf, nb, "'=== ВХОЖДЕНИЕ " & hits & ": модуль " & vbc.Name & _
+                                  "   строки " & sL & ".." & eL & "   (" & (eL - sL + 1) & ")"
+                EXP_Push buf, nb, "'============================================================"
+                For k = sL To eL
+                    EXP_Push buf, nb, cm.lines(k, 1)
+                Next k
+                EXP_Push buf, nb, ""
+                i = eL + 1
+            Else
+                i = i + 1
+            End If
+        Loop
+    Next vbc
+
+    If hits = 0 Then
+        MsgBox "Процедура <" & nm & "> не найдена." & vbCrLf & _
+               "Запустите ExportVBA_ListProcs для точных имён.", vbExclamation
+    Else
+        EXP_WriteU8 root & EXP_Safe(nm) & ".txt", buf, 0, nb - 1
+        MsgBox "Вхождений: " & hits & " — всё в одном файле:" & vbCrLf & _
+               root & EXP_Safe(nm) & ".txt", vbInformation
+    End If
+    Exit Sub
+EH:
+    MsgBox "Ошибка " & Err.Number & ": " & Err.Description, vbCritical
+End Sub
+
+'------------------------------------------------------------------------------
+' 4. КАРТА ПРОЦЕДУР (один файл)
+'------------------------------------------------------------------------------
+Public Sub ExportVBA_ListProcs()
+    Dim desk As String, root As String
+    Dim vbc As Object, cm As Object
+    Dim i As Long, j As Long, n As Long, eL As Long
+    Dim kind As String, nm As String
+    Dim out() As String, no As Long, total As Long
+
+    On Error GoTo EH
+    desk = CreateObject("WScript.Shell").SpecialFolders("Desktop")
+    root = desk & "\" & EXP_ROOTNAME & "PROC\"
+    If Dir(root, vbDirectory) = "" Then MkDir root
+
+    ReDim out(0 To 8191): no = 0
+    EXP_Push out, no, "MODULE" & vbTab & "PROCEDURE" & vbTab & "KIND" & vbTab & _
+                      "START" & vbTab & "END" & vbTab & "LINES"
+
+    For Each vbc In ThisWorkbook.VBProject.VBComponents
+        Set cm = vbc.CodeModule
+        n = cm.CountOfLines
+        i = 1
+        Do While i <= n
+            kind = ""
+            nm = EXP_AnyStart(LTrim(cm.lines(i, 1)), kind)
+            If Len(nm) > 0 Then
+                eL = 0
+                For j = i + 1 To n
+                    If EXP_IsEnd(LTrim(cm.lines(j, 1)), kind) Then eL = j: Exit For
+                Next j
+                If eL = 0 Then eL = n
+                EXP_Push out, no, vbc.Name & vbTab & nm & vbTab & kind & vbTab & _
+                                  i & vbTab & eL & vbTab & (eL - i + 1)
+                total = total + 1
+                i = eL + 1
+            Else
+                i = i + 1
+            End If
+        Loop
+    Next vbc
+
+    EXP_WriteU8 root & "_PROCMAP.txt", out, 0, no - 1
+    MsgBox "Процедур: " & total & vbCrLf & "Файл: " & root & "_PROCMAP.txt", vbInformation
+    Exit Sub
+EH:
+    MsgBox "Ошибка " & Err.Number & ": " & Err.Description, vbCritical
+End Sub
+
+'==============================================================================
+' СЛУЖЕБНЫЕ
+'==============================================================================
+Private Sub EXP_Push(ByRef a() As String, ByRef n As Long, ByVal s As String)
+    If n > UBound(a) Then ReDim Preserve a(0 To UBound(a) * 2 + 16)
+    a(n) = s
+    n = n + 1
+End Sub
+
+Private Sub EXP_WriteU8(ByVal path As String, ByRef a() As String, _
+                        ByVal i0 As Long, ByVal i1 As Long)
+    Dim st As Object, bn As Object, k As Long
+    Set st = CreateObject("ADODB.Stream")
+    st.Type = 2
+    st.Charset = "UTF-8"
+    st.Open
+    For k = i0 To i1
+        st.WriteText a(k)
+        st.WriteText vbCrLf
+    Next k
+    st.Position = 0
+    st.Type = 1
+    st.Position = 3          ' срезать BOM EF BB BF
+    Set bn = CreateObject("ADODB.Stream")
+    bn.Type = 1
+    bn.Open
+    st.CopyTo bn
+    st.Close
+    bn.SaveToFile path, 2
+    bn.Close
+End Sub
+
+Private Function EXP_NormNL(ByVal s As String) As String
+    s = Replace(s, vbCrLf, vbLf)
+    s = Replace(s, vbCr, vbLf)
+    EXP_NormNL = s
+End Function
+
+Private Function EXP_Safe(ByVal s As String) As String
+    Dim bad As Variant, k As Long
+    bad = Array("\", "/", ":", "*", "?", """", "<", ">", "|", " ", ".")
+    For k = LBound(bad) To UBound(bad)
+        s = Replace(s, CStr(bad(k)), "_")
+    Next k
+    If Len(s) = 0 Then s = "noname"
+    EXP_Safe = s
+End Function
+
+Private Function EXP_TypeName(ByVal t As Long) As String
+    Select Case t
+        Case 1: EXP_TypeName = "Module"
+        Case 2: EXP_TypeName = "Class"
+        Case 3: EXP_TypeName = "Form"
+        Case 100: EXP_TypeName = "Document"
+        Case Else: EXP_TypeName = "Type" & t
+    End Select
+End Function
+
+Private Function EXP_IsStart(ByVal t As String, ByVal nm As String, ByRef kind As String) As Boolean
+    Dim s As String, p As Long, w As String
+    EXP_IsStart = False
+    s = EXP_StripPref(t)
+    If Left(s, 4) = "Sub " Then
+        kind = "Sub": w = Mid(s, 5)
+    ElseIf Left(s, 9) = "Function " Then
+        kind = "Function": w = Mid(s, 10)
+    ElseIf Left(s, 9) = "Property " Then
+        kind = "Property": w = Mid(s, 10)
+        If Left(w, 4) = "Get " Then w = Mid(w, 5)
+        If Left(w, 4) = "Let " Then w = Mid(w, 5)
+        If Left(w, 4) = "Set " Then w = Mid(w, 5)
+    Else
+        Exit Function
+    End If
+    w = LTrim(w)
+    p = InStr(w, "(")
+    If p = 0 Then p = InStr(w, " ")
+    If p = 0 Then p = Len(w) + 1
+    If StrComp(Left(w, p - 1), nm, vbTextCompare) = 0 Then EXP_IsStart = True
+End Function
+
+Private Function EXP_AnyStart(ByVal t As String, ByRef kind As String) As String
+    Dim s As String, w As String, p As Long
+    EXP_AnyStart = ""
+    s = EXP_StripPref(t)
+    If Left(s, 4) = "Sub " Then
+        kind = "Sub": w = Mid(s, 5)
+    ElseIf Left(s, 9) = "Function " Then
+        kind = "Function": w = Mid(s, 10)
+    ElseIf Left(s, 9) = "Property " Then
+        kind = "Property": w = Mid(s, 10)
+        If Left(w, 4) = "Get " Then w = Mid(w, 5)
+        If Left(w, 4) = "Let " Then w = Mid(w, 5)
+        If Left(w, 4) = "Set " Then w = Mid(w, 5)
+    Else
+        Exit Function
+    End If
+    w = LTrim(w)
+    p = InStr(w, "(")
+    If p = 0 Then p = InStr(w, " ")
+    If p = 0 Then p = Len(w) + 1
+    EXP_AnyStart = Left(w, p - 1)
+End Function
+
+Private Function EXP_StripPref(ByVal t As String) As String
+    Dim s As String
+    s = LTrim(t)
+    Do
+        If Left(s, 7) = "Public " Then
+            s = LTrim(Mid(s, 8))
+        ElseIf Left(s, 8) = "Private " Then
+            s = LTrim(Mid(s, 9))
+        ElseIf Left(s, 7) = "Friend " Then
+            s = LTrim(Mid(s, 8))
+        ElseIf Left(s, 7) = "Static " Then
+            s = LTrim(Mid(s, 8))
+        Else
+            Exit Do
+        End If
+    Loop
+    EXP_StripPref = s
+End Function
+
+Private Function EXP_IsEnd(ByVal t As String, ByVal kind As String) As Boolean
+    Dim s As String, p As Long
+    s = LTrim(t)
+    p = InStr(s, "'")
+    If p > 0 Then s = Trim(Left(s, p - 1))
+    EXP_IsEnd = False
+    If kind = "Sub" And s = "End Sub" Then EXP_IsEnd = True
+    If kind = "Function" And s = "End Function" Then EXP_IsEnd = True
+    If kind = "Property" And s = "End Property" Then EXP_IsEnd = True
+End Function
+

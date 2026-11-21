@@ -1,0 +1,347 @@
+'============================================================
+'===== ЭтаКнига   (328 строк)
+'============================================================
+Private Sub Workbook_Activate()
+If Worksheets("CODE").Cells(5, 58).Value = 0 Then Call AddCustomMenu
+End Sub
+
+
+
+Private Sub Workbook_Deactivate()
+Call DelCustomMenu
+Call RC_dell
+End Sub
+Private Sub RC_dell()
+
+ BUT1 = "GO_ШАБЛОНЫ"
+     On Error Resume Next
+    Application.CommandBars("Cell").Controls(BUT1).Delete
+   
+
+On Error GoTo 0
+
+ BUT1 = "GO_OI_PPK"
+     On Error Resume Next
+    Application.CommandBars("Cell").Controls(BUT1).Delete
+   
+
+On Error GoTo 0
+    
+     BUT1 = "GO_GENER"
+     On Error Resume Next
+    Application.CommandBars("Cell").Controls(BUT1).Delete
+   
+
+
+On Error GoTo 0
+
+
+BUT1 = "GO_ПЕЧИ"
+     On Error Resume Next
+    Application.CommandBars("Cell").Controls(BUT1).Delete
+
+On Error GoTo 0
+
+BUT1 = "GO_НАСОСЫ"
+     On Error Resume Next
+    Application.CommandBars("Cell").Controls(BUT1).Delete
+
+On Error GoTo 0
+
+BUT1 = "GO_АРМАТУРЫ"
+     On Error Resume Next
+    Application.CommandBars("Cell").Controls(BUT1).Delete
+   
+On Error GoTo 0
+
+BUT1 = "GO_24_COMP + HUB"
+     On Error Resume Next
+    Application.CommandBars("Cell").Controls(BUT1).Delete
+
+On Error GoTo 0
+
+BUT1 = "GO_MAIN"
+     On Error Resume Next
+    Application.CommandBars("Cell").Controls(BUT1).Delete
+   
+
+
+On Error GoTo 0
+
+ BUT1 = "GO_БИБЛИОТЕКА"
+     On Error Resume Next
+    Application.CommandBars("Cell").Controls(BUT1).Delete
+   
+On Error GoTo 0
+
+ BUT1 = "GO_ЛИСТ_I"
+     On Error Resume Next
+    Application.CommandBars("Cell").Controls(BUT1).Delete
+    
+    On Error GoTo 0
+
+ BUT1 = "GO_ЛИСТ"
+     On Error Resume Next
+    Application.CommandBars("Cell").Controls(BUT1).Delete
+
+On Error GoTo 0
+
+ BUT1 = "GO_LIB_I"
+     On Error Resume Next
+    Application.CommandBars("Cell").Controls(BUT1).Delete
+
+
+On Error GoTo 0
+
+ BUT1 = "* назад"
+     On Error Resume Next
+    Application.CommandBars("Cell").Controls(BUT1).Delete
+
+
+On Error GoTo 0
+End Sub
+
+
+Private Sub Workbook_SheetBeforeRightClick(ByVal sh As Object, ByVal Target As Range, Cancel As Boolean)
+
+If Worksheets("CODE").Cells(5, 58).Value > 0 Then Exit Sub
+
+'GO_ШАБЛОНЫ
+ BUT1 = "GO_ШАБЛОНЫ"
+     On Error Resume Next
+    Application.CommandBars("Cell").Controls(BUT1).Delete
+   
+'Set cmdBarBut = Application.CommandBars("Cell").Controls.Add(Type:=msoControlButton, Before:=1, Temporary:=True)
+Set cmdBarBut = Application.CommandBars("Cell").Controls.Add(Type:=msoControlButton, Temporary:=True)
+   With cmdBarBut
+   'Присваиваем кнопке название
+   .Caption = BUT1
+   'Задаем отображение в контекстном меню только названия кнопки
+   .Style = msoButtonIconAndCaption
+   
+   'Назначаем кнопке процедуру (макрос)
+   .OnAction = "go_ssbl"
+End With
+
+On Error GoTo 0
+
+
+ BUT1 = "GO_OI_PPK"
+     On Error Resume Next
+    Application.CommandBars("Cell").Controls(BUT1).Delete
+   
+'Set cmdBarBut = Application.CommandBars("Cell").Controls.Add(Type:=msoControlButton, Before:=1, Temporary:=True)
+Set cmdBarBut = Application.CommandBars("Cell").Controls.Add(Type:=msoControlButton, Temporary:=True)
+   With cmdBarBut
+   'Присваиваем кнопке название
+   .Caption = BUT1
+   'Задаем отображение в контекстном меню только названия кнопки
+   .Style = msoButtonIconAndCaption
+   
+   'Назначаем кнопке процедуру (макрос)
+   .OnAction = "go_oi_ppk"
+End With
+
+On Error GoTo 0
+    
+     BUT1 = "GO_GENER"
+     On Error Resume Next
+    Application.CommandBars("Cell").Controls(BUT1).Delete
+   
+'Set cmdBarBut = Application.CommandBars("Cell").Controls.Add(Type:=msoControlButton, Before:=1, Temporary:=True)
+Set cmdBarBut = Application.CommandBars("Cell").Controls.Add(Type:=msoControlButton, Temporary:=True)
+   With cmdBarBut
+   'Присваиваем кнопке название
+   .Caption = BUT1
+   'Задаем отображение в контекстном меню только названия кнопки
+   .Style = msoButtonIconAndCaption
+   
+   'Назначаем кнопке процедуру (макрос)
+   .OnAction = "go_gener"
+End With
+
+On Error GoTo 0
+
+
+BUT1 = "GO_ПЕЧИ"
+     On Error Resume Next
+    Application.CommandBars("Cell").Controls(BUT1).Delete
+   
+Set cmdBarBut = Application.CommandBars("Cell").Controls.Add(Type:=msoControlButton, Temporary:=True)
+
+   With cmdBarBut
+   'Присваиваем кнопке название
+   .Caption = BUT1
+   'Задаем отображение в контекстном меню только названия кнопки
+   .Style = msoButtonIconAndCaption
+   
+   'Назначаем кнопке процедуру (макрос)
+   .OnAction = "go_fur_2"
+End With
+
+On Error GoTo 0
+
+BUT1 = "GO_НАСОСЫ"
+     On Error Resume Next
+    Application.CommandBars("Cell").Controls(BUT1).Delete
+   
+Set cmdBarBut = Application.CommandBars("Cell").Controls.Add(Type:=msoControlButton, Temporary:=True)
+
+   With cmdBarBut
+   'Присваиваем кнопке название
+   .Caption = BUT1
+   'Задаем отображение в контекстном меню только названия кнопки
+   .Style = msoButtonIconAndCaption
+   
+   'Назначаем кнопке процедуру (макрос)
+   .OnAction = "go_pump"
+End With
+
+
+
+On Error GoTo 0
+
+BUT1 = "GO_АРМАТУРЫ"
+     On Error Resume Next
+    Application.CommandBars("Cell").Controls(BUT1).Delete
+   
+Set cmdBarBut = Application.CommandBars("Cell").Controls.Add(Type:=msoControlButton, Temporary:=True)
+
+   With cmdBarBut
+   'Присваиваем кнопке название
+   .Caption = BUT1
+   'Задаем отображение в контекстном меню только названия кнопки
+   .Style = msoButtonIconAndCaption
+   
+   'Назначаем кнопке процедуру (макрос)
+   .OnAction = "go_arm"
+End With
+
+
+On Error GoTo 0
+
+BUT1 = "GO_24_COMP + HUB"
+     On Error Resume Next
+    Application.CommandBars("Cell").Controls(BUT1).Delete
+   
+Set cmdBarBut = Application.CommandBars("Cell").Controls.Add(Type:=msoControlButton, Temporary:=True)
+
+   With cmdBarBut
+   'Присваиваем кнопке название
+   .Caption = BUT1
+   'Задаем отображение в контекстном меню только названия кнопки
+   .Style = msoButtonIconAndCaption
+   
+   'Назначаем кнопке процедуру (макрос)
+   .OnAction = "go_24_comp"
+End With
+
+
+On Error GoTo 0
+
+BUT1 = "GO_MAIN"
+     On Error Resume Next
+    Application.CommandBars("Cell").Controls(BUT1).Delete
+   
+Set cmdBarBut = Application.CommandBars("Cell").Controls.Add(Type:=msoControlButton, Temporary:=True)
+
+   With cmdBarBut
+   'Присваиваем кнопке название
+   .Caption = BUT1
+   'Задаем отображение в контекстном меню только названия кнопки
+   .Style = msoButtonIconAndCaption
+   
+   'Назначаем кнопке процедуру (макрос)
+   .OnAction = "go_main"
+End With
+
+On Error GoTo 0
+
+ BUT1 = "GO_БИБЛИОТЕКА"
+     On Error Resume Next
+    Application.CommandBars("Cell").Controls(BUT1).Delete
+   
+Set cmdBarBut = Application.CommandBars("Cell").Controls.Add(Type:=msoControlButton, Temporary:=True)
+
+   With cmdBarBut
+   'Присваиваем кнопке название
+   .Caption = BUT1
+   'Задаем отображение в контекстном меню только названия кнопки
+   .Style = msoButtonIconAndCaption
+   
+   'Назначаем кнопке процедуру (макрос)
+   .OnAction = "go_LIB"
+End With
+
+On Error GoTo 0
+
+BUT1 = "GO_ЛИСТ_I"
+     On Error Resume Next
+    Application.CommandBars("Cell").Controls(BUT1).Delete
+   
+Set cmdBarBut = Application.CommandBars("Cell").Controls.Add(Type:=msoControlButton, Temporary:=True)
+
+   With cmdBarBut
+   'Присваиваем кнопке название
+   .Caption = BUT1
+   'Задаем отображение в контекстном меню только названия кнопки
+   .Style = msoButtonIconAndCaption
+   
+   'Назначаем кнопке процедуру (макрос)
+   .OnAction = "go_LST"
+End With
+
+On Error GoTo 0
+
+BUT1 = "GO_LIB_I"
+     On Error Resume Next
+    Application.CommandBars("Cell").Controls(BUT1).Delete
+   
+Set cmdBarBut = Application.CommandBars("Cell").Controls.Add(Type:=msoControlButton, Temporary:=True)
+
+   With cmdBarBut
+   'Присваиваем кнопке название
+   .Caption = BUT1
+   'Задаем отображение в контекстном меню только названия кнопки
+   .Style = msoButtonIconAndCaption
+   
+   'Назначаем кнопке процедуру (макрос)
+   .OnAction = "go_LIB_I"
+End With
+
+On Error GoTo 0
+
+ BUT1 = "* назад"
+     On Error Resume Next
+    Application.CommandBars("Cell").Controls(BUT1).Delete
+   
+Set cmdBarBut = Application.CommandBars("Cell").Controls.Add(Type:=msoControlButton, Temporary:=True)
+
+   With cmdBarBut
+   'Присваиваем кнопке название
+   .Caption = BUT1
+   'Задаем отображение в контекстном меню только названия кнопки
+   .Style = msoButtonIconAndCaption
+   
+   'Назначаем кнопке процедуру (макрос)
+   .OnAction = "go_back"
+End With
+
+On Error GoTo 0
+End Sub
+
+'============================================================
+'===== Лист4   (11 строк)
+'============================================================
+
+    
+    
+
+Private Sub Worksheet_Change(ByVal Target As Range)
+    If Not Intersect(Target, Range("JG58")) Is Nothing Then
+        Call F_macro
+    End If
+End Sub
+
+
+

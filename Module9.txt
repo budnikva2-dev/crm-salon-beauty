@@ -1,0 +1,90 @@
+Sub Перекл118_Щелчок()
+
+End Sub
+Sub Перекл122_Щелчок()
+ufProgress.Show (0)
+Application.ScreenUpdating = False
+s1 = Cells(19, 59).Value
+s2 = Cells(19, 60).Value
+
+
+If s2 = s1 Then
+Else
+answer = MsgBox("Изменить формат третей линии?", vbQuestion + vbYesNo + vbDefaultButton2, "Изменение формата третей линии в связях.")
+If answer = vbYes Then
+
+
+If s1 = 1 Then ' надо перекрасить в старое
+For i = 3 To Worksheets.Count
+For j = 7 To 133 Step 7
+For jj = 9 To 28
+Worksheets(i).Cells(j, jj).Interior.Color = Worksheets(i).Cells(j - 1, jj).Interior.Color
+Next jj
+Next j
+Call PrPro(100 * (i - 2) / (Worksheets.Count - 2 + 0.00001), "Подготовка форматов!")
+Next i
+End If
+
+If s1 = 2 Then ' надо перекрасить в новое
+For i = 3 To Worksheets.Count
+For j = 7 To 133 Step 7
+For jj = 9 To 27 Step 2
+Worksheets(i).Cells(j, jj).Interior.Color = Worksheets(1).Cells(5, 58).Interior.Color
+Worksheets(i).Cells(j, jj + 1).Interior.Color = Worksheets(1).Cells(13, 57).Interior.Color
+Next jj
+Next j
+Call PrPro(100 * (i - 2) / (Worksheets.Count - 2 + 0.00001), "Подготовка форматов!")
+Next i
+End If
+End If
+Cells(19, 60).Value = Cells(19, 59).Value
+End If
+
+
+Application.ScreenUpdating = True
+Unload ufProgress
+End Sub
+Sub Перекл121_Щелчок()
+ufProgress.Show (0)
+Application.ScreenUpdating = False
+s1 = Cells(19, 59).Value
+s2 = Cells(19, 60).Value
+
+
+If s2 = s1 Then
+Else
+answer = MsgBox("Изменить формат третей линии?", vbQuestion + vbYesNo + vbDefaultButton2, "Изменение формата третей линии в связях.")
+If answer = vbYes Then
+
+
+
+If s1 = 1 Then ' надо перекрасить в старое
+For i = 3 To Worksheets.Count
+For j = 7 To 133 Step 7
+For jj = 9 To 28
+Worksheets(i).Cells(j, jj).Interior.Color = Worksheets(i).Cells(j - 1, jj).Interior.Color
+Next jj
+Next j
+Call PrPro(100 * (i - 2) / (Worksheets.Count - 2 + 0.00001), "Подготовка форматов!")
+Next i
+End If
+
+If s1 = 2 Then ' надо перекрасить в новое
+For i = 3 To Worksheets.Count
+For j = 7 To 133 Step 7
+For jj = 9 To 27 Step 2
+Worksheets(i).Cells(j, jj).Interior.Color = Worksheets(1).Cells(5, 58).Interior.Color
+Worksheets(i).Cells(j, jj + 1).Interior.Color = Worksheets(1).Cells(13, 57).Interior.Color
+Next jj
+Next j
+Call PrPro(100 * (i - 2) / (Worksheets.Count - 2 + 0.00001), "Подготовка форматов!")
+Next i
+End If
+End If
+Cells(19, 60).Value = Cells(19, 59).Value
+End If
+
+
+Application.ScreenUpdating = True
+Unload ufProgress
+End Sub

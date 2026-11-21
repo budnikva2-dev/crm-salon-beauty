@@ -1,0 +1,536 @@
+Sub Кнопка25_Щелчок()
+
+End Sub
+Sub Кнопка185_Щелчок()
+
+End Sub
+Sub DelCustomMenu()
+Dim cb As CommandBar
+    Set cb = Application.CommandBars("Worksheet Menu Bar")
+    
+    Dim cbc As CommandBarControl
+    ' Удаляем существующее меню, если оно есть
+    On Error Resume Next
+    cb.Controls("GDC Menu PRO").Delete
+    cb.Controls("GDC Menu OPERATOR").Delete
+    cb.Controls("Расчёт гидравлики").Delete
+    cb.Controls("Установить объем 10м3 для OI").Delete
+    cb.Controls("Тест связей").Delete
+    cb.Controls("Сбор библиотеки").Delete
+    cb.Controls("Форма работы со списками листов").Delete
+    cb.Controls("Форма глобальной правки имен").Delete
+    cb.Controls("Импорт книги с другого закрытого файла").Delete
+    cb.Controls("Выгрузка файла CSV save/load переменных").Delete
+    cb.Controls("Выгрузка файла CSV ARMS").Delete
+    cb.Controls("Назначить правила для CSV ARMS").Delete
+    cb.Controls("Выгрузка файла CSV U_ri Tables").Delete
+    cb.Controls("SMART import").Delete
+    cb.Controls("Загрузить пресеты").Delete
+    cb.Controls("Сохранить пресеты").Delete
+    cb.Controls("Форма присвоения спец.арматур").Delete
+    cb.Controls("Найти все OI").Delete
+    cb.Controls("Показать статистику").Delete
+    cb.Controls("Рассчитать и собрать модели").Delete
+    cb.Controls("Сбор рассчитанных моделей").Delete
+    cb.Controls("Make C.SH_All").Delete
+    cb.Controls("Make C.SH_Math").Delete
+    cb.Controls("SMART import + GEN").Delete
+    cb.Controls("Make Pethon_split").Delete
+    cb.Controls("Make С#_visual").Delete
+    On Error GoTo 0
+    
+End Sub
+
+'Создание нового меню "Моё меню"
+Sub AddCustomMenu()
+If Worksheets(1).Name = "CODE" Then
+    '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''PRO''''''''''''''''''''''''''''''''''
+    Dim cb As CommandBar
+    Set cb = Application.CommandBars("Worksheet Menu Bar")
+    
+    Dim cbc As CommandBarControl
+    ' Удаляем существующее меню, если оно есть
+    On Error Resume Next
+    cb.Controls("GDC Menu PRO").Delete
+    cb.Controls("GDC Menu OPERATOR").Delete
+    cb.Controls("Расчёт гидравлики").Delete
+    cb.Controls("Установить объем 10м3 для OI").Delete
+    cb.Controls("Тест связей").Delete
+    cb.Controls("Сбор библиотеки").Delete
+    cb.Controls("Форма работы со списками листов").Delete
+    cb.Controls("Форма глобальной правки имен").Delete
+    cb.Controls("Импорт книги с другого закрытого файла").Delete
+    cb.Controls("Выгрузка файла CSV save/load переменных").Delete
+    cb.Controls("Выгрузка файла CSV ARMS").Delete
+    cb.Controls("Назначить правила для CSV ARMS").Delete
+    cb.Controls("Выгрузка файла CSV U_ri Tables").Delete
+    cb.Controls("SMART import").Delete
+    cb.Controls("Загрузить пресеты").Delete
+    cb.Controls("Сохранить пресеты").Delete
+    cb.Controls("Форма присвоения спец.арматур").Delete
+    cb.Controls("Найти все OI").Delete
+    cb.Controls("Показать статистику").Delete
+    cb.Controls("Рассчитать и собрать модели").Delete
+    cb.Controls("Сбор рассчитанных моделей").Delete
+    cb.Controls("Make C.SH_All").Delete
+    cb.Controls("Make C.SH_Math").Delete
+    cb.Controls("SMART import + GEN").Delete
+    cb.Controls("Make Pethon_split").Delete
+    cb.Controls("Make С#_visual").Delete
+'Make С#_visual
+    
+    
+    
+    
+    On Error GoTo 0
+    
+    
+    
+    ' Добавляем пункт меню
+    'Dim cbb As CommandBarButton
+    Set cbc = cb.Controls.Add(Type:=msoControlButton)
+    cbc.Caption = "Тест связей"
+    cbc.Style = msoButtonIconAndCaption
+    cbc.FaceId = 1105 'Иконка для пункта меню
+    cbc.OnAction = "menu_test"
+    
+    Set cbc = cb.Controls.Add(Type:=msoControlButton)
+    cbc.Caption = "Сбор библиотеки"
+    cbc.Style = msoButtonIconAndCaption
+    cbc.FaceId = 1077 'Иконка для пункта меню
+    cbc.OnAction = "menu_bib"
+    
+    Set cbc = cb.Controls.Add(Type:=msoControlButton)
+    cbc.Caption = "Форма работы со списками листов"
+    cbc.Style = msoButtonIconAndCaption
+    cbc.FaceId = 195 'Иконка для пункта меню
+    cbc.OnAction = "menu_list"
+    
+    Set cbc = cb.Controls.Add(Type:=msoControlButton)
+    cbc.Caption = "Форма глобальной правки имен"
+    cbc.Style = msoButtonIconAndCaption
+    cbc.FaceId = 240 'Иконка для пункта меню
+    cbc.OnAction = "menu_chn"
+    
+    Set cbc = cb.Controls.Add(Type:=msoControlButton)
+    cbc.Caption = "Импорт книги с другого закрытого файла"
+    cbc.Style = msoButtonIconAndCaption
+    cbc.FaceId = 213 'Иконка для пункта меню
+    cbc.OnAction = "menu_imp"
+    
+    Set cbc = cb.Controls.Add(Type:=msoControlButton)
+    cbc.Caption = "Расчёт гидравлики"
+    cbc.Style = msoButtonIconAndCaption
+    cbc.FaceId = 1043 'Иконка для пункта меню
+    cbc.OnAction = "menu_gid"
+    
+    Set cbc = cb.Controls.Add(Type:=msoControlButton)
+    cbc.Caption = "Установить объем 10м3 для OI"
+    cbc.Style = msoButtonIconAndCaption
+    cbc.FaceId = 101 'Иконка для пункта меню
+    cbc.OnAction = "menu_v_10"
+    
+    Set cbc = cb.Controls.Add(Type:=msoControlButton)
+    cbc.Caption = "Выгрузка файла CSV save/load переменных"
+    cbc.Style = msoButtonIconAndCaption
+    cbc.FaceId = 1036 'Иконка для пункта меню
+    cbc.OnAction = "menu_csv_p"
+    
+    Set cbc = cb.Controls.Add(Type:=msoControlButton)
+    cbc.Caption = "Выгрузка файла CSV ARMS"
+    cbc.Style = msoButtonIconAndCaption
+    cbc.FaceId = 299  'Иконка для пункта меню
+    cbc.OnAction = "menu_csv_a"
+    
+    Set cbc = cb.Controls.Add(Type:=msoControlButton)
+    cbc.Caption = "Назначить правила для CSV ARMS"
+    cbc.Style = msoButtonIconAndCaption
+    cbc.Style = msoButtonIconAndCaption
+    cbc.FaceId = 1399 'Иконка для пункта меню
+    cbc.OnAction = "menu_csv_ra"
+    
+    Set cbc = cb.Controls.Add(Type:=msoControlButton)
+    cbc.Caption = "Выгрузка файла CSV U_ri Tables"
+    cbc.Style = msoButtonIconAndCaption
+    cbc.FaceId = 143 'Иконка для пункта меню
+    cbc.OnAction = "menu_csv_uri"
+    
+    Set cbc = cb.Controls.Add(Type:=msoControlButton)
+    cbc.Caption = "SMART import"
+    cbc.Style = msoButtonIconAndCaption
+    cbc.FaceId = 246 'Иконка для пункта меню
+    cbc.OnAction = "menu_simp"
+    
+    Set cbc = cb.Controls.Add(Type:=msoControlButton)
+    cbc.Caption = "Загрузить пресеты"
+    cbc.Style = msoButtonIconAndCaption
+    cbc.FaceId = 205 'Иконка для пункта меню
+    cbc.OnAction = "menu_pres"
+    
+    Set cbc = cb.Controls.Add(Type:=msoControlButton)
+    cbc.Caption = "Сохранить пресеты"
+    cbc.Style = msoButtonIconAndCaption
+    cbc.FaceId = 222 'Иконка для пункта меню
+    cbc.OnAction = "menu_presS"
+    
+    Set cbc = cb.Controls.Add(Type:=msoControlButton)
+    cbc.Caption = "Форма присвоения спец.арматур"
+    cbc.Style = msoButtonIconAndCaption
+    cbc.FaceId = 162 'Иконка для пункта меню
+    cbc.OnAction = "menu_spa"
+    
+    Set cbc = cb.Controls.Add(Type:=msoControlButton)
+    cbc.Caption = "Найти все OI"
+    cbc.Style = msoButtonIconAndCaption
+    cbc.FaceId = 141 'Иконка для пункта меню
+    cbc.OnAction = "menu_foi"
+    
+    Set cbc = cb.Controls.Add(Type:=msoControlButton)
+    cbc.Caption = "Показать статистику"
+    cbc.Style = msoButtonIconAndCaption
+    cbc.FaceId = 115 'Иконка для пункта меню
+    cbc.OnAction = "menu_gst"
+    
+    Set cbc = cb.Controls.Add(Type:=msoControlButton)
+    cbc.Caption = "Рассчитать и собрать модели"
+    cbc.Style = msoButtonIconAndCaption
+    cbc.FaceId = 116 'Иконка для пункта меню
+    cbc.OnAction = "menu_rsm"
+    
+    Set cbc = cb.Controls.Add(Type:=msoControlButton)
+    cbc.Caption = "Сбор рассчитанных моделей"
+    cbc.Style = msoButtonIconAndCaption
+    cbc.FaceId = 117 'Иконка для пункта меню
+    cbc.OnAction = "menu_ssm"
+    
+    Set cbc = cb.Controls.Add(Type:=msoControlButton)
+    cbc.Caption = "Make C.SH_All"
+    cbc.Style = msoButtonIconAndCaption
+    cbc.FaceId = 82 'Иконка для пункта меню
+    cbc.OnAction = "menu_cca"
+    
+    Set cbc = cb.Controls.Add(Type:=msoControlButton)
+    cbc.Caption = "Make C.SH_Math"
+    cbc.Style = msoButtonIconAndCaption
+    cbc.FaceId = 668 'Иконка для пункта меню
+    cbc.OnAction = "menu_ccam"
+    
+    Set cbc = cb.Controls.Add(Type:=msoControlButton)
+    cbc.Caption = "SMART import + GEN"
+    cbc.Style = msoButtonIconAndCaption
+    cbc.FaceId = 704 'Иконка для пункта меню
+    cbc.OnAction = "menu_simpp"
+    
+    Set cbc = cb.Controls.Add(Type:=msoControlButton)
+    cbc.Caption = "Make Pethon_split"
+    cbc.Style = msoButtonIconAndCaption
+    cbc.FaceId = 59 'Иконка для пункта меню
+    cbc.OnAction = "menu_mps"
+    
+    Set cbc = cb.Controls.Add(Type:=msoControlButton)
+    cbc.Caption = "Make С#_visual"
+    cbc.Style = msoButtonIconAndCaption
+    cbc.FaceId = 159 'Иконка для пункта меню
+    cbc.OnAction = "menu_cishv"
+    
+    
+    
+    
+    ' Добавляем новое меню
+    
+    Set cbc = cb.Controls.Add(Type:=msoControlPopup)
+    cbc.Caption = "GDC Menu PRO"
+    'cbc.FaceId = 1043 'Иконка для пункта меню
+    
+    ' Добавляем пункт меню
+    Dim cbb As CommandBarButton
+    Set cbb = cbc.Controls.Add(Type:=msoControlButton)
+    cbb.Caption = "Расчёт гидравлики"
+    cbb.FaceId = 1043 'Иконка для пункта меню
+    cbb.OnAction = "menu_gid"
+    
+    Set cbb = cbc.Controls.Add(Type:=msoControlButton)
+    cbb.Caption = "Установить объем 10м3 для OI"
+    cbb.FaceId = 101 'Иконка для пункта меню
+    cbb.OnAction = "menu_v_10"
+    
+    Set cbb = cbc.Controls.Add(Type:=msoControlButton)
+    cbb.Caption = "Выгрузка файла CSV save/load переменных"
+    cbb.FaceId = 1036 'Иконка для пункта меню
+    cbb.OnAction = "menu_csv_p"
+    
+    Set cbb = cbc.Controls.Add(Type:=msoControlButton)
+    cbb.Caption = "Выгрузка файла CSV ARMS"
+    cbb.FaceId = 299  'Иконка для пункта меню
+    cbb.OnAction = "menu_csv_a"
+    
+    Set cbb = cbc.Controls.Add(Type:=msoControlButton)
+    cbb.Caption = "Назначить правила для CSV ARMS"
+    cbb.FaceId = 1399 'Иконка для пункта меню
+    cbb.OnAction = "menu_csv_ra"
+    
+    Set cbb = cbc.Controls.Add(Type:=msoControlButton)
+    cbb.Caption = "Выгрузка файла CSV U_ri Tables"
+    cbb.FaceId = 143 'Иконка для пункта меню
+    cbb.OnAction = "menu_csv_uri"
+    
+    Set cbb = cbc.Controls.Add(Type:=msoControlButton)
+    cbb.Caption = "SMART import"
+    cbb.FaceId = 246 'Иконка для пункта меню
+    cbb.OnAction = "menu_simp"
+    
+    Set cbb = cbc.Controls.Add(Type:=msoControlButton)
+    cbb.Caption = "Загрузить пресеты"
+    cbb.FaceId = 205 'Иконка для пункта меню
+    cbb.OnAction = "menu_pres"
+    
+    Set cbb = cbc.Controls.Add(Type:=msoControlButton)
+    cbb.Caption = "Сохранить пресеты"
+    cbb.FaceId = 222 'Иконка для пункта меню
+    cbb.OnAction = "menu_presS"
+    
+    Set cbb = cbc.Controls.Add(Type:=msoControlButton)
+    cbb.Caption = "Форма присвоения спец.арматур"
+    cbb.FaceId = 162 'Иконка для пункта меню
+    cbb.OnAction = "menu_spa"
+    
+    Set cbb = cbc.Controls.Add(Type:=msoControlButton)
+    cbb.Caption = "Найти все OI"
+    cbb.FaceId = 141 'Иконка для пункта меню
+    cbb.OnAction = "menu_foi"
+    
+    Set cbb = cbc.Controls.Add(Type:=msoControlButton)
+    cbb.Caption = "Показать статистику"
+    cbb.FaceId = 115 'Иконка для пункта меню
+    cbb.OnAction = "menu_gst"
+    
+    Set cbb = cbc.Controls.Add(Type:=msoControlButton)
+    cbb.Caption = "Рассчитать и собрать модели"
+    cbb.FaceId = 116 'Иконка для пункта меню
+    cbb.OnAction = "menu_rsm"
+    
+    Set cbb = cbc.Controls.Add(Type:=msoControlButton)
+    cbb.Caption = "Сбор рассчитанных моделей"
+    cbb.FaceId = 117 'Иконка для пункта меню
+    cbb.OnAction = "menu_ssm"
+    
+    Set cbb = cbc.Controls.Add(Type:=msoControlButton)
+    cbb.Caption = "Make C.SH_All"
+    cbb.FaceId = 82 'Иконка для пункта меню
+    cbb.OnAction = "menu_cca"
+    
+    Set cbb = cbc.Controls.Add(Type:=msoControlButton)
+    cbb.Caption = "Make C.SH_Math"
+    cbb.FaceId = 668 'Иконка для пункта меню
+    cbb.OnAction = "menu_ccam"
+    
+    Set cbb = cbc.Controls.Add(Type:=msoControlButton)
+    cbb.Caption = "SMART import + GEN"
+    cbb.FaceId = 704 'Иконка для пункта меню
+    cbb.OnAction = "menu_simpp"
+    
+    Set cbb = cbc.Controls.Add(Type:=msoControlButton)
+    cbb.Caption = "Make Pethon_split"
+    cbb.FaceId = 59 'Иконка для пункта меню
+    cbb.OnAction = "menu_mps"
+    
+    Set cbb = cbc.Controls.Add(Type:=msoControlButton)
+    cbb.Caption = "Make С#_visual"
+    cbb.FaceId = 59 'Иконка для пункта меню
+    cbb.OnAction = "menu_cishv"
+    
+    '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''PRO''''''''''''''''''''''''''''''''''
+    
+    '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''OPR''''''''''''''''''''''''''''''''''
+
+    Set cb = Application.CommandBars("Worksheet Menu Bar")
+
+    ' Удаляем существующее меню, если оно есть
+    On Error Resume Next
+    cb.Controls("GDC Menu OPERATOR").Delete
+    On Error GoTo 0
+    
+    ' Добавляем новое меню
+    Set cbc = cb.Controls.Add(Type:=msoControlPopup)
+    cbc.Caption = "GDC Menu OPERATOR"
+    
+    ' Добавляем пункт меню
+    'Dim cbb As CommandBarButton
+    Set cbb = cbc.Controls.Add(Type:=msoControlButton)
+    cbb.Caption = "Тест связей"
+    cbb.FaceId = 1105 'Иконка для пункта меню
+    cbb.OnAction = "menu_test"
+    
+    Set cbb = cbc.Controls.Add(Type:=msoControlButton)
+    cbb.Caption = "Сбор библиотеки"
+    cbb.FaceId = 1077 'Иконка для пункта меню
+    cbb.OnAction = "menu_bib"
+    
+    Set cbb = cbc.Controls.Add(Type:=msoControlButton)
+    cbb.Caption = "Форма работы со списками листов"
+    cbb.FaceId = 195 'Иконка для пункта меню
+    cbb.OnAction = "menu_list"
+    
+    Set cbb = cbc.Controls.Add(Type:=msoControlButton)
+    cbb.Caption = "Форма глобальной правки имен"
+    cbb.FaceId = 240 'Иконка для пункта меню
+    cbb.OnAction = "menu_chn"
+    
+    Set cbb = cbc.Controls.Add(Type:=msoControlButton)
+    cbb.Caption = "Импорт книги с другого закрытого файла"
+    cbb.FaceId = 213 'Иконка для пункта меню
+    cbb.OnAction = "menu_imp"
+    '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''OPR''''''''''''''''''''''''''''''''''
+    cb.Controls("GDC Menu PRO").Delete
+    cb.Controls("GDC Menu OPERATOR").Delete
+    
+End If
+End Sub
+
+Sub menu_cishv()
+Worksheets("CODE").Activate
+Call CI_Vgener_2
+End Sub
+
+Sub menu_v_10()
+Worksheets("CODE").Activate
+Call Voi_10
+End Sub
+
+Sub menu_mps()
+Worksheets("CODE").Activate
+Call GEN_ALL_Python_start
+End Sub
+
+Sub menu_simpp()
+Worksheets("CODE").Activate
+Call smart_import_0
+End Sub
+
+Sub menu_ccam()
+Worksheets("CODE").Activate
+Call M_b_free_MM
+End Sub
+
+Sub menu_cca()
+Worksheets("CODE").Activate
+Call M_butt
+End Sub
+
+Sub menu_ssm()
+Worksheets("CODE").Activate
+If ActiveSheet.Name = "CODE" Then
+Worksheets("CODE").Cells(6, 4).Select
+End If
+Call sbor_c
+End Sub
+
+Sub menu_rsm()
+Worksheets("CODE").Activate
+If ActiveSheet.Name = "CODE" Then
+Worksheets("CODE").Cells(6, 4).Select
+End If
+Call Ras_C
+End Sub
+
+Sub menu_gst()
+Worksheets("CODE").Activate
+If ActiveSheet.Name = "CODE" Then
+Worksheets("CODE").Cells(6, 4).Select
+End If
+Call stati_All
+End Sub
+
+Sub menu_foi()
+Worksheets("CODE").Activate
+If ActiveSheet.Name = "CODE" Then
+Worksheets("CODE").Cells(6, 4).Select
+End If
+Call oi_found
+End Sub
+
+Sub menu_spa()
+Worksheets("CODE").Activate
+Call one_ok
+End Sub
+
+Sub menu_presS()
+Worksheets("CODE").Activate
+If ActiveSheet.Name = "CODE" Then
+Worksheets("CODE").Cells(63, 55).Select
+End If
+Call save_presets
+End Sub
+
+Sub menu_pres()
+Worksheets("CODE").Activate
+If ActiveSheet.Name = "CODE" Then
+Worksheets("CODE").Cells(63, 55).Select
+End If
+Call load_presets
+End Sub
+
+Sub menu_simp()
+Worksheets("CODE").Activate
+Call Import_plus
+End Sub
+
+Sub menu_imp()
+Worksheets("CODE").Activate
+Call ImportSheet
+End Sub
+
+Sub menu_chn()
+Worksheets("CODE").Activate
+Call GLOB_p
+End Sub
+
+Sub menu_list()
+Worksheets("CODE").Activate
+Call GLOB_LIST
+End Sub
+
+Sub menu_csv_uri()
+Worksheets("CODE").Activate
+Call csv_uri
+End Sub
+
+Sub menu_csv_p()
+Worksheets("CODE").Activate
+Call csv_SL
+End Sub
+
+Sub menu_csv_a()
+Worksheets("CODE").Activate
+Call csv_Arms
+End Sub
+
+Sub menu_csv_ra()
+Worksheets("CODE").Activate
+Call Rulls_arm
+End Sub
+
+Sub menu_test()
+Worksheets("CODE").Activate
+If ActiveSheet.Name = "CODE" Then
+Worksheets("CODE").Cells(6, 4).Select
+End If
+Call testConnectLOG_start
+End Sub
+
+Sub menu_bib()
+Worksheets("CODE").Activate
+If ActiveSheet.Name = "CODE" Then
+Worksheets("CODE").Cells(61, 54).Select
+End If
+Call list_ist_fast
+End Sub
+
+Sub menu_gid()
+Worksheets("CODE").Activate
+If ActiveSheet.Name = "CODE" Then
+Worksheets("CODE").Cells(10, 69).Select
+End If
+Call all_GS_count
+End Sub
+

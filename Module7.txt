@@ -1,0 +1,2481 @@
+' =====================================================================
+' list_ist_fast_DS — основной сбор библиотеки
+' =====================================================================
+Sub list_ist_fast_DS()
+    Dim oldCalc As Long, oldEvents As Boolean, oldAlerts As Boolean, oldScreen As Boolean
+    oldCalc = Application.Calculation
+    oldEvents = Application.EnableEvents
+    oldAlerts = Application.DisplayAlerts
+    oldScreen = Application.ScreenUpdating
+
+    Dim wsCode As Worksheet
+    Set wsCode = Worksheets("CODE")
+
+'st_0
+ua_time = ((Day(Time) * 24 + Hour(Time)) * 60 + Minute(Time)) * 60 + Second(Time)
+wsCode.Cells(12, 166).Value = 1 ' индикатор требования сбора библиотеки
+
+Application.ScreenUpdating = False
+Application.Calculation = xlCalculationManual
+Application.EnableEvents = False
+Application.DisplayAlerts = False
+
+ufProgress.Show (0)
+aa = Worksheets.Count
+Range("BB63:BB15500").ClearContents
+Range("BE63:BE15500").ClearContents
+Range("LP63:LP15500").ClearContents
+
+Dim lst0(15500) As String
+Dim lst(15500) As String
+j0 = 0
+j = 0
+azi = Cells(59, 46).Value
+Range("BB63:BB15500").Interior.Color = Cells(61, 54).Interior.Color
+Range("LP63:LP15500").Interior.Color = Cells(61, 54).Interior.Color
+Range("AV63:AV15500").Interior.Color = Cells(61, 54).Interior.Color
+
+' === Кэш имён листов ===
+Dim wsNames() As String
+ReDim wsNames(1 To aa)
+Dim kC As Long
+For kC = 1 To aa
+    wsNames(kC) = Worksheets(kC).Name
+Next kC
+
+Dim wsBB As Worksheet
+Dim stat As Variant
+
+For i = 1 To aa
+    If i > 2 Then
+        Worksheets(i).Name = Replace(Worksheets(i).Cells(4, 4).Value, " ", "")
+        wsNames(i) = Worksheets(i).Name
+    End If
+    a_time = Timer
+    bb = wsNames(i)
+    If bb <> "CODE" And bb <> "EX" Then
+        j0 = j0 + 1
+        Set wsBB = Worksheets(i)
+        wsBB.Cells(4, 4).Value = Replace(wsBB.Cells(4, 4).Value, " ", "")
+
+        ' ищем безусловные источники
+        For bi = 5 To 131 Step 7
+            aaw = Replace(wsBB.Cells(bi, 7).Value, " ", "")
+            If Len(aaw) > 1 Then
+                wsBB.Cells(bi, 7).Value = aaw
+                stat = wsBB.Cells(bi + 3, 7).Value
+                ' проверяем нет ли ошибки в наименовании источника безусловным
+                If stat = 1 Then
+                    For ii00 = 1 To aa
+                        If wsNames(ii00) = aaw Then
+                            wsBB.Cells(bi + 3, 7).Value = 2
+                            stat = 2
+                            If azi = 1 Then
+                                MsgBox ("На листе " + bb + " источник " + wsNames(ii00) + " указан как безусловный, при этом для него создан лист. Произведена автозамена статуса источника на (2)-условный!")
+                            End If
+                        End If
+                    Next ii00
+                End If
+
+                If stat = 1 Then
+                    j = j + 1
+                    wsCode.Cells(62 + j, 54).Value = wsBB.Cells(bi, 7).Value
+                    wsCode.Cells(62 + j, 54).Interior.Color = RGB(200, 50, 50)
+                    If wsBB.Cells(bi + 3, 7).Interior.Color = wsBB.Cells(17, 1).Interior.Color Then
+                        wsCode.Cells(62 + j, 54).Font.Color = wsCode.Cells(29, 53).Font.Color
+                    Else
+                        wsCode.Cells(62 + j, 54).Font.Color = wsCode.Cells(61, 48).Font.Color
+                    End If
+                End If
+            End If
+        Next bi
+    End If
+    b_time = Timer
+    ab = Format((b_time - a_time) * 1000, 0#) / 1000
+    Call PrPro_DS(100 * (i - 2) / (aa - 2), "Библиотека. Поиск ошибки условный/безусловный!" + Chr(13) + Chr(10) + "ср.время:" + Str(ab) + " сек.")
+Next i
+
+j3 = j
+
+' === Словарь имя>индекс после всех переименований ===
+Dim wsDict As Object
+Set wsDict = CreateObject("Scripting.Dictionary")
+For kC = 1 To aa
+    If Not wsDict.Exists(wsNames(kC)) Then wsDict.Add wsNames(kC), kC
+Next kC
+
+Dim ISI_n(12300) As String
+Dim rt1 As Long
+
+For i = 1 To aa
+    a_time = Timer
+    bb = wsNames(i)
+    If bb <> "CODE" And bb <> "EX" Then
+        j = j + 1
+        j0 = j0 + 1
+        Set wsBB = Worksheets(i)
+        lst0(j) = wsBB.Cells(4, 4).Value
+        ISI_n(j) = lst0(j)
+
+        ' ищем условные источники
+        For bi = 5 To 131 Step 7
+            aaw = Replace(wsBB.Cells(bi, 7).Value, " ", "")
+            If Len(aaw) > 1 Then
+                If wsBB.Cells(bi + 3, 7).Value = 2 Then
+                    rt1 = 0
+                    If wsDict.Exists(aaw) Then rt1 = wsDict(aaw)
+                    If rt1 < 3 Then MsgBox ("На листе " + bb + " источник " + aaw + " указан как условный, при этом для него не создан лист!")
+                    j = j + 1
+                    ISI_n(j) = aaw
+                End If
+            End If
+        Next bi
+    End If
+    b_time = Timer
+    ab = Format((20 * 1000 * ab + (b_time - a_time) * 1000) / 21, 0#) / 1000
+    Call PrPro_DS(100 * (i - 2) / (aa - 2), "Библиотека. Сбор имен источников!" + Chr(13) + Chr(10) + "ср.время:" + Str(ab) + " сек. (" + Str(j) + ")")
+Next i
+wsCode.Activate
+
+For j0 = j3 + 1 To j
+    wsCode.Cells(62 + j0, 54).Value = ISI_n(j0)
+    Call PrPro_DS(100 * (j0) / (j), "Библиотека. Печать имен источников!")
+Next j0
+
+wsCode.Range("BB63:BB15500").RemoveDuplicates 1
+wsCode.Range("BB63:BB15500").RemoveDuplicates 1
+wsCode.Range("BB63:BB15500").RemoveDuplicates 1
+wsCode.Range("BB63:BB15500").RemoveDuplicates 1
+wsCode.Range("BB63:BB15500").RemoveDuplicates 1
+
+OIi = 63
+Do
+    aOI = 0
+    If wsCode.Cells(OIi, 54).Interior.Color = RGB(200, 50, 50) Then aOI = 1
+    OIi = OIi + 1
+Loop While aOI = 1
+wsCode.Range(wsCode.Cells(OIi, 54), wsCode.Cells(2500, 54)).Interior.Color = wsCode.Cells(62, 47).Interior.Color
+
+o = 0
+Dim ldo(15400) As String
+Dim n2 As Long, bbArr As Variant, wArr As Variant
+n2 = Worksheets.Count * 2
+bbArr = wsCode.Range(wsCode.Cells(63, 54), wsCode.Cells(62 + n2, 54)).Value
+For k = 1 To n2
+    If Not bbArr(k, 1) = "" Then
+        o = o + 1
+        ldo(o) = bbArr(k, 1)
+    End If
+Next k
+wsCode.Range("BB63:BB10000").ClearContents
+If o > 0 Then
+    ReDim wArr(1 To o, 1 To 1)
+    For i = 1 To o
+        wArr(i, 1) = ldo(i)
+    Next i
+    wsCode.Range(wsCode.Cells(63, 54), wsCode.Cells(62 + o, 54)).Value = wArr
+End If
+aa1 = aa1
+
+' насосы
+For i = 86 To 169
+    For j = 29 To 30
+        assd = wsCode.Cells(i, j).Value
+        If Len(assd) > 200 Then
+            o = o + 1
+            wsCode.Cells(62 + o, 54).Value = assd
+            wsCode.Cells(62 + o, 54).Interior.Color = RGB(200, 50, 50)
+        End If
+    Next j
+Next i
+
+' собираем lst через пакетное чтение
+Dim lstArr As Variant
+If o > 0 Then
+    lstArr = wsCode.Range(wsCode.Cells(63, 54), wsCode.Cells(62 + o, 54)).Value
+    For j = 1 To o
+        lst(j) = lstArr(j, 1)
+    Next j
+End If
+j = o + 1
+
+sro13:
+On Error GoTo sro13
+For i = 35 To 53 Step 2
+    wsCode.Range(wsCode.Cells(i, 52), wsCode.Cells(i, 58)).Validation.Delete
+    wsCode.Range(wsCode.Cells(i, 50), wsCode.Cells(i, 50)).Validation.Delete
+Next i
+
+If wsCode.Cells(1, 1).Value = 0 Then
+Else
+    If wsCode.Cells(60, 44).Value = 1 Then MsgBox ("Библиотека: Сбор источников завершен!")
+End If
+
+556:
+
+Call numer_is_2_DS
+
+Call zadvi_DS
+
+o = 0
+Dim N3 As Long, beArr As Variant, beOut As Variant
+N3 = Worksheets.Count * 19 * 5
+beArr = wsCode.Range(wsCode.Cells(63, 57), wsCode.Cells(62 + N3, 57)).Value
+For k = 1 To N3
+    Call PrPro_DS(100 * (k) / N3, "Библиотека. Сбор оригиналов!")
+    aaz = Replace(beArr(k, 1), " ", "")
+    If Not aaz = "" Then
+        o = o + 1
+        ldo(o) = aaz
+    End If
+Next k
+wsCode.Range("BE63:BE15500").ClearContents
+If o > 0 Then
+    ReDim beOut(1 To o, 1 To 1)
+    For i = 1 To o
+        beOut(i, 1) = ldo(i)
+        Call PrPro_DS((i - 62) / (2.5 * Worksheets.Count) * 100, "Библиотека. Печть оригиналов!")
+    Next i
+    wsCode.Range(wsCode.Cells(63, 57), wsCode.Cells(62 + o, 57)).Value = beOut
+End If
+
+wsCode.Range("BB63:CD15500").VerticalAlignment = xlCenter
+wsCode.Range("BB63:CD15500").HorizontalAlignment = xlCenter
+
+If wsCode.Cells(1, 1).Value = 0 Then
+Else
+    If wsCode.Cells(60, 44).Value = 1 Then MsgBox ("Библиотека: Сбор арматур завершен!")
+End If
+Call PrPro_DS(100, "Библиотека.")
+
+' анализ включения одного имени в другое
+i = 0
+b = 0
+II0 = 0
+Do
+    a = wsCode.Cells(63 + i, 54).Value
+    If a = "" Then
+        b = 1
+    Else
+        i = i + 1
+        If wsCode.Cells(62 + i, 54).Interior.Color = RGB(200, 50, 50) Then
+            II0 = II0 + 1
+        End If
+    End If
+    Call PrPro_DS((i - 62) / (Worksheets.Count) * 100, "Библиотека. Считаем число источников_1!")
+Loop While b = 0
+chi = i
+
+If wsCode.Cells(57, 51).Value = 1 Then
+    ' пакетное чтение столбца 54 (chi+1 строк, чтобы сохранить поведение при j=chi+1)
+    Dim col54 As Variant
+    col54 = wsCode.Range(wsCode.Cells(63, 54), wsCode.Cells(63 + chi, 54)).Value
+
+    For i = 1 To chi
+        yma1 = col54(i, 1)
+        For j = 1 To chi
+            If j = i Then j = j + 1
+            yma2 = col54(j, 1)
+            is0 = InStr(yma1, yma2)
+            IS1 = InStr(yma2, yma1)
+            ' If is0 + IS1 > 0 Then ... (закомментировано в оригинале)
+        Next j
+        Call PrPro_DS((i - 62) / (Worksheets.Count) * 100, "Библиотека. Считаем число источников_2!")
+    Next i
+
+    ' анализ двойного трактования типа источника
+    aa = Worksheets.Count
+
+    ' однократное чтение G5:G134 со всех листов
+    Dim sheetG() As Variant
+    ReDim sheetG(1 To aa)
+    Dim jS As Long
+    For jS = 3 To aa
+        sheetG(jS) = Worksheets(jS).Range("G5:G134").Value
+    Next jS
+
+    Dim gArr As Variant
+    Dim aawIdx As Long
+    For i = 1 To chi
+        yma1 = wsCode.Cells(62 + i, 54).Value
+        startt = 0
+        Call PrPro_DS(100 * (i) / (chi), "Библиотека. Трактования!")
+        For jS = 3 To aa
+            gArr = sheetG(jS)
+            For k = 1 To 19
+                aawIdx = 1 + (k - 1) * 7
+                If Replace(CStr(gArr(aawIdx, 1)), " ", "") = yma1 Then
+                    yma3 = Replace(CStr(gArr(aawIdx, 1)), " ", "")
+                    tip3 = gArr(aawIdx + 3, 1)
+                    osh = 1
+                    If startt = 0 Then
+                        Tip0 = tip3
+                        startt = 1
+                    Else
+                        osh = tip3 / Tip0
+                        styma = wsNames(jS)
+                        stst = yma3
+                    End If
+                    If Not osh = 1 Then
+                        MsgBox ("В книге, на некоторых листах, указан тип источника " + stst + " = " + Str(Tip0) + ". При этом на листе " + wsNames(jS) + " этот же источник обозначен как =" + Str(tip3))
+                    End If
+                End If
+            Next k
+        Next jS
+    Next i
+End If
+
+wsCode.Range("JS63:JS6000").ClearContents
+i = 63
+Dim v57 As Variant
+v57 = wsCode.Cells(i, 57).Value
+Do
+    wsCode.Cells(i, 279).Value = v57
+    i = i + 1
+    Call PrPro_DS((i - 62) / (2.5 * Worksheets.Count) * 100, "Библиотека. Преверяем арматуры_1!")
+    v57 = wsCode.Cells(i, 57).Value
+Loop While Len(v57) > 1
+
+wsCode.Range("IZ63:IZ6000").ClearContents
+wsCode.Range("KW63:KW6000").ClearContents
+i = 63
+Dim v54 As Variant
+v54 = wsCode.Cells(i, 54).Value
+Do
+    wsCode.Cells(i, 260).Value = v54
+    wsCode.Cells(i, 309).Value = v54
+    wsCode.Cells(i, 328).Value = v54
+    wsCode.Cells(i, 328).Interior.Color = wsCode.Cells(i, 54).Interior.Color
+    i = i + 1
+    Call PrPro_DS((i - 62) / (2.5 * Worksheets.Count) * 100, "Библиотека. Преверяем арматуры_2!")
+    v54 = wsCode.Cells(i, 54).Value
+Loop While Len(v54) > 1
+
+If wsCode.Cells(1, 1).Value = 0 Then
+Else
+    If wsCode.Cells(60, 44).Value = 1 Then MsgBox ("Библиотека: Анализ имен завершен!")
+End If
+Call PrPro_DS(100, "Библиотека.")
+
+Call stati_DS
+
+If wsCode.Cells(1, 1).Value = 0 Then
+Else
+    If wsCode.Cells(60, 44).Value = 1 Then MsgBox ("Библиотека: Простановка порядковых номеров завершена!")
+End If
+
+wsCode.Range("AW63:BA6000").ClearContents
+Dim targetColor As Long
+targetColor = wsCode.Cells(61, 48).Interior.Color
+oiu = 63
+Dim v54e As Variant
+v54e = wsCode.Cells(oiu, 54).Value
+Do
+    If wsCode.Cells(oiu, 54).Interior.Color = targetColor Then
+        wsCode.Cells(oiu, 49).Value = "aa0 = " + v54e
+        wsCode.Cells(oiu, 50).Value = "aa1 = " + v54e
+        wsCode.Cells(oiu, 53).Value = "aa2 = " + v54e
+    End If
+    oiu = oiu + 1
+    Call PrPro_DS(100 * (oiu - 62) / 1.3 * Worksheets.Count, "Библиотека. Заполняем уравнения!")
+    v54e = wsCode.Cells(oiu, 54).Value
+Loop While Len(v54e) > 1
+
+If TIPmb = 1 Then
+Else
+    If wsCode.Cells(1, 1).Value = 0 Then
+    Else
+        Call PrPro_DS(100, "Библиотека. Генерируем условия связи штуцеров!")
+        On Error GoTo sro16
+        Call GEN_USL_x_DS
+
+        i63 = 63
+        Dim DNO(10000) As Single
+        asd = wsCode.Cells(62, 48).Interior.Color
+        ima = wsCode.Cells(i63, 54).Value
+        Dim cArr As Variant
+        Do
+            If wsCode.Cells(i63, 54).Interior.Color = asd Then
+            Else
+                cArr = Worksheets(ima).Range("C9:C13").Value
+                a1 = cArr(1, 1)
+                a2 = cArr(3, 1)
+                a3 = cArr(5, 1)
+                DNO(i63) = a3 * a1 * a2
+            End If
+            i63 = i63 + 1
+            ima = wsCode.Cells(i63, 54).Value
+            Call PrPro_DS((i63 - 62) / (aa - 1.99), "Библиотека. Собираем данные по формам днища!")
+        Loop While Len(ima) > 1
+        If i63 > 63 Then
+            Dim dnoOut As Variant
+            ReDim dnoOut(1 To i63 - 63, 1 To 1)
+            For i = 63 To i63 - 1
+                dnoOut(i - 62, 1) = DNO(i)
+            Next i
+            wsCode.Range(wsCode.Cells(63, 95), wsCode.Cells(i63 - 1, 95)).Value = dnoOut
+        End If
+        Call PrPro_DS(100, "Библиотека.")
+
+        ub_time = ((Day(Time) * 24 + Hour(Time)) * 60 + Minute(Time)) * 60 + Second(Time)
+        ab = ub_time - ua_time
+        st_1
+        Call GEN_lib_code_DS
+        MsgBox ("Библиотека: ВЫПОЛНЕНО 100%!" + Chr(13) + Chr(10) + "Время затрачено " + Str(ab) + " сек.")
+    End If
+End If
+sro16:
+Application.Calculation = oldCalc
+Application.EnableEvents = oldEvents
+Application.DisplayAlerts = oldAlerts
+Application.ScreenUpdating = oldScreen
+Unload ufProgress
+End Sub
+
+
+' =====================================================================
+' GEN_lib_code_DS — генерация кода библиотеки
+' =====================================================================
+Sub GEN_lib_code_DS()
+    Dim LIB_code As String
+    Dim wsCode As Worksheet
+    Set wsCode = Worksheets("CODE")
+
+    DT0 = Replace(Str(Year(Date)) + "_" + Str(Month(Date)), " ", "")
+    LIB_code = DT0
+    i = 63
+    Dim imaV As Variant
+    imaV = wsCode.Cells(i, 54).Value
+    Do
+        LIB_code = LIB_code + ": " + Str(i - 62) + "_" + W_code_n1((imaV))
+        i = i + 1
+        imaV = wsCode.Cells(i, 54).Value
+    Loop While Len(imaV) > 1
+
+    LIB_code = Replace(LIB_code, " ", "")
+
+    wsCode.Cells(8, 167).Value = LIB_code
+    wsCode.Cells(9, 167).Value = Replace(Str(Year(Date)) + "_" + Str(Month(Date)) + "_" + Str(Day(Date)), " ", "")
+End Sub
+
+
+' =====================================================================
+' numer_is_2_DS
+' =====================================================================
+Sub numer_is_2_DS()
+    Dim IM_is(6000) As String
+    Dim TP_is(6000) As Single
+    Dim i As Long, ui As Long, nom_i As Long, chi As Long, kk As Long
+    Dim wsCode As Worksheet
+    Set wsCode = Worksheets("CODE")
+
+    For i = 1 To 6000
+        IM_is(i) = ""
+        TP_is(i) = 1
+    Next i
+
+    Dim defColor As Long
+    defColor = wsCode.Cells(61, 48).Interior.Color
+
+    Dim vCur As Variant, vNext As Variant
+    ui = 63
+    Do
+        nom_i = ui - 62
+        wsCode.Cells(ui, 48).Value = nom_i
+        vCur = wsCode.Cells(ui, 54).Value
+        IM_is(nom_i) = vCur
+        If wsCode.Cells(ui, 54).Interior.Color = defColor Then TP_is(nom_i) = 2
+        ui = ui + 1
+        vNext = wsCode.Cells(ui, 54).Value
+        If Len(vNext) <= 1 Then Exit Do
+    Loop
+    chi = ui - 63
+
+    ' ставим на заголовках листов
+    For i = 1 To chi
+        If TP_is(i) = 2 Then
+            Worksheets(IM_is(i)).Cells(4, 3).Value = i
+        End If
+        Call PrPro_DS(100 * (i - 2) / (Worksheets.Count - 2), "Библиотека. Ставим номера_1!")
+    Next i
+
+    ' словарь имя>номер (первое вхождение)
+    Dim imaDict As Object
+    Set imaDict = CreateObject("Scripting.Dictionary")
+    For i = 1 To chi
+        If Not imaDict.Exists(CStr(IM_is(i))) Then imaDict.Add CStr(IM_is(i)), i
+    Next i
+
+    aa = Worksheets.Count
+    Dim gArr3 As Variant
+    Dim valG As Variant
+    Dim ima2 As Variant
+    Dim nom_p As Long
+    Dim gu_text As String
+
+    For i = 3 To aa
+        Call PrPro_DS(100 * (i - 2) / (Worksheets.Count - 2), "Библиотека. Ставим номера_2!")
+        gu_text = " №" + Str(i - 2) + " / " + Str(aa - 2)
+        Worksheets(i).Cells(1, 1).Value = gu_text
+
+        gArr3 = Worksheets(i).Range("G5:G131").Value
+        For kk = 1 To 19
+            valG = gArr3(1 + (kk - 1) * 7, 1)
+            If valG > 1 Then
+                ima2 = valG
+                nom_p = 0
+                If imaDict.Exists(CStr(ima2)) Then nom_p = imaDict(CStr(ima2))
+                If nom_p > 0 Then
+                    Worksheets(i).Cells(8 + (kk - 1) * 7, 9).Value = nom_p
+                End If
+            End If
+        Next kk
+    Next i
+
+    For i = 3 To Worksheets.Count
+        Call PrPro_DS(100 * (i - 2) / (Worksheets.Count - 2), "Библиотека. Метим насосы/печи-СБРОС!")
+        Worksheets(i).Cells(3, 32).Value = 0
+        Worksheets(i).Cells(4, 32).Value = 0
+    Next i
+
+    i = 86
+    Dim v19 As Variant
+    v19 = wsCode.Cells(i, 19).Value
+    Do
+        pgo = wsCode.Cells(i, 27).Value
+        pgi = wsCode.Cells(i, 28).Value
+        If Len(pgo) * Len(pgi) > 0 Then
+            Worksheets(pgo).Cells(3, 32).Value = 1
+            Worksheets(pgi).Cells(3, 32).Value = 1
+        End If
+        Call PrPro_DS(100 * (i - 85) / 84, "Библиотека. Метим насосы/печи-МАРКЕР!")
+        i = i + 1
+        v19 = wsCode.Cells(i, 19).Value
+    Loop While Len(v19) > 0
+
+    On Error GoTo 1946
+    ypo = 1
+    For i = 452 To 522 Step 7
+        imao = wsCode.Cells(i, 40).Value
+        If Len(imao) > 1 Then
+            Worksheets(imao).Cells(4, 32).Value = 1
+            UVZ1 = wsCode.Cells(i + 1, 42).Value
+            If IsNumeric(UVZ1) = True Then UVZ1 = " 1 "
+            If Replace(UVZ1, " ", "") = "" Then UVZ1 = " 1 "
+            Worksheets(imao).Cells(4, 33).Value = UVZ1
+        End If
+    Next i
+    ypo = 0
+1946:
+    If ypo = 1 Then
+        MsgBox ("НЕ ВЕРНЫЕ ИМЕНА ПЕЧЕЙ_2. Нет в листах!")
+    End If
+End Sub
+
+
+' =====================================================================
+' zadvi_DS
+' =====================================================================
+Sub zadvi_DS()
+    Dim zF(20000) As String
+    Dim OK_d(20000) As String
+    Dim sos(20000) As String
+    Dim sosn(20000) As String
+
+    Range("LK63:LL15500").ClearContents
+
+    n_f = 0
+    ufProgress.Show (0)
+    aa = Worksheets.Count
+
+    Dim wsCode As Worksheet
+    Set wsCode = Worksheets("CODE")
+
+    Dim data As Variant
+    Dim wsBB As Worksheet
+    Dim aaw As Variant, aaw_nom As Variant, sh_nom As Variant
+    Dim origAaz As Variant, aaz As Variant
+    Dim rAaz As Long, cAaz As Long
+
+    ' ЗАДВИЖКИ
+    j = 0
+    For i = 3 To aa
+        ist_NAME = Worksheets(i).Cells(4, 4).Value
+        IST_nom = Worksheets(i).Cells(4, 3).Value
+        a_time = Timer
+        bb = i
+        Set wsBB = Worksheets(i)
+        str_ad = "  ARM:  '"
+
+        ' один вызов чтения всей нужной области листа
+        data = wsBB.Range(wsBB.Cells(4, 6), wsBB.Cells(134, 28)).Value
+
+        ' ищем безусловные источники
+        For bi = 5 To 131 Step 7
+            aaw = data(bi - 3, 2)       ' Cells(bi, 7)
+            aaw_nom = data(bi, 4)       ' Cells(bi+3, 9)
+            sh_nom = data(bi - 3, 1)    ' Cells(bi, 6)
+            If Len(aaw) > 1 Then
+                str_ad = str_ad + "+'+" + Replace("A" + Str(sh_nom) + "(", " ", "") + Str(aaw_nom) + ")('"
+            End If
+            For li = 1 To 3
+                For si = 10 To 28 Step 2
+                    rAaz = bi - 4 + li
+                    cAaz = si - 5
+                    origAaz = data(rAaz, cAaz)
+                    aaz = Replace(origAaz, " ", "")
+
+                    If aaz = "" Then
+                    Else
+                        wsBB.Cells(bi - 1 + li, si).Value = aaz
+
+                        If IsNumeric(aaz) = True Then
+                            MsgBox ("arm_Error01 На листе источника #" + Str(IST_nom) + " " + ist_NAME + " для источника " + aaw + " в записи арматур присутсвует имя арматуры в числовом формате. Проверьте форму записи: " + aaz)
+                            Exit Sub
+                        End If
+
+                        aa17 = 0
+                        If InStr(aaz, "+") Then aa17 = 1
+                        If InStr(aaz, "*") Then aa17 = 2
+                        If aa17 = 0 Then
+                            j = j + 1
+                            zF(j) = aaz
+                            sos(j) = aaw + " : " + ist_NAME
+                            sosn(j) = Str(aaw_nom) + " : " + Str(IST_nom) + " : " + Str(sh_nom)
+                            OK_d(j) = ""
+                            aaz1 = aaz
+                            If Left(aaz1, 2) = "ok" Then
+                                aaz1 = Replace(aaz1 + "*" + aaz1 + "_ok", " ", "")
+                                napr = Replace(wsBB.Cells(bi - 1 + li, si - 1).Value, " ", "")
+                                If napr = "b" Then napr = "<---"
+                                If napr = "f" Then napr = "--->"
+                                If InStr(napr, "---") = 0 Then
+                                    napr = ""
+                                Else
+                                    OK_d(j) = ist_NAME + napr + aaw
+                                End If
+                            End If
+                            str_ad = str_ad + "+'_" + aaz + "='+cStrF(" + aaz1 + ",1)"
+                        End If
+                        If aa17 > 0 Then
+                            aa18 = 0
+                            aa19 = Replace(aaz, ")", "")
+                            aa19 = Replace(aa19, "(", "")
+                            Do
+                                aa20 = InStr(aa19, "+")
+                                aa200 = InStr(aa19, "*")
+                                If aa20 = 0 Then aa20 = Len(aa19)
+                                If aa200 = 0 Then aa200 = Len(aa19)
+                                If aa200 < aa20 Then aa20 = aa200
+                                If aa20 = 0 Then
+                                    aa21 = aa19
+                                Else
+                                    aa21 = Left(aa19, aa20)
+                                End If
+                                aa19 = Right(aa19, Len(aa19) - aa20)
+
+                                j = j + 1
+                                aadd = Replace(Replace(aa21, "+", ""), "*", "")
+                                zF(j) = aadd
+                                If Len(aadd) < 1 Then
+                                    MsgBox ("На листе источника #" + Str(IST_nom) + " " + ist_NAME + " для источника " + aaw + " в записи арматур присутсвует имя арматуры с нулевой длинной. Проверьте форму записи: " + aaz)
+                                End If
+                                If IsNumeric(aadd) = True Then
+                                    MsgBox ("arm_Error02 На листе источника #" + Str(IST_nom) + " " + ist_NAME + " для источника " + aaw + " в записи арматур присутсвует имя арматуры в числовом формате. Проверьте форму записи: " + aaz)
+                                    Exit Sub
+                                End If
+                                sos(j) = aaw + " : " + ist_NAME
+                                sosn(j) = Str(aaw_nom) + " : " + Str(IST_nom) + " : " + Str(sh_nom)
+                                str_ad = str_ad + "+'_" + aadd + "='+cStrF(" + aadd + ",1)"
+                                If j > 25000 Then aa19 = ""
+                            Loop Until Len(aa19) < 2
+                        End If
+                    End If
+                Next si
+            Next li
+            If Len(aaw) > 1 Then
+                str_ad = str_ad + "+')+'"
+                wsBB.Cells(123, 1).Value = str_ad
+            End If
+        Next bi
+
+        b_time = Timer
+        ab = Format((20 * 1000 * ab + (b_time - a_time) * 1000) / 21, 0#) / 1000
+        Call PrPro_DS(100 * (i - 2) / (aa - 2), "Библиотека. Поиск задвижек!" + Chr(13) + Chr(10) + "ср.время:" + Str(ab) + " сек. (" + Str(j) + ")")
+    Next i
+
+    wsCode.Activate
+    For j0 = 1 To j
+        wsCode.Cells(62 + j0, 57).Value = zF(j0)
+        Call PrPro_DS(100 * (j0) / (j), "Библиотека. Печать задвижек!")
+    Next j0
+    wsCode.Range("BE63:BE15500").RemoveDuplicates 1
+    wsCode.Range("BE63:BE15500").RemoveDuplicates 1
+    wsCode.Range("BE63:BE15500").RemoveDuplicates 1
+
+    i = 63
+    imak = wsCode.Cells(i, 57).Value
+    Do
+        i = i + 1
+        imak = wsCode.Cells(i, 57).Value
+    Loop While Len(imak) > 1
+    chK = i - 62
+
+    wsCode.Range("BE63:BE15500").Interior.Color = wsCode.Cells(62, 47).Interior.Color
+    wsCode.Range("CR63:CR15500").ClearContents
+
+    ' словарь zF > j0 (последнее вхождение = семантика перезаписи в оригинале)
+    Dim zFDict As Object
+    Set zFDict = CreateObject("Scripting.Dictionary")
+    For j0 = 1 To j
+        zFDict(CStr(zF(j0))) = j0
+    Next j0
+
+    Dim key As String
+    Dim jj As Long
+    i = 63
+    imak = wsCode.Cells(i, 57).Value
+    Do
+        key = CStr(imak)
+        If zFDict.Exists(key) Then
+            jj = zFDict(key)
+            wsCode.Cells(i, 323).Value = sos(jj)
+            wsCode.Cells(i, 324).Value = sosn(jj)
+            If Len(OK_d(jj)) > 1 Then wsCode.Cells(i, 96).Value = OK_d(jj)
+        End If
+        i = i + 1
+        Call PrPro_DS(100 * (i - 62) / (chK), "Библиотека. Сбор направлений ОК!")
+        imak = wsCode.Cells(i, 57).Value
+    Loop While Len(imak) > 1
+    aa1 = aa1
+End Sub
+
+
+' =====================================================================
+' GEN_USL_x_DS — генерация условий связи штуцеров
+' =====================================================================
+Sub GEN_USL_x_DS()
+    aa = Worksheets.Count
+    chsv = 0
+
+    Dim liss As Long, ii As Long, jj As Long
+    Dim ws As Worksheet
+    Dim data As Variant
+    Dim outArr() As Variant
+    Dim USL_x As String
+    Dim aawV As Variant
+    Dim k1 As Variant, k2 As Variant, k3 As Variant
+    Dim kk1 As String, kk2 As String, kk3 As String
+    Dim ind_k As Long
+    Dim rBase As Long, cJ As Long
+
+    ReDim outArr(1 To 19, 1 To 1)
+
+    For liss = 3 To aa
+        Set ws = Worksheets(liss)
+        data = ws.Range(ws.Cells(5, 7), ws.Cells(133, 26)).Value  ' 129 x 20
+
+        For ii = 1 To 19
+            USL_x = "1"
+            rBase = (ii - 1) * 7 + 1
+            aawV = data(rBase, 1)
+            If Len(aawV) > 1 Then
+                For jj = 1 To 9
+                    cJ = 4 + (jj - 1) * 2
+                    k1 = data(rBase, cJ)
+                    k2 = data(rBase + 1, cJ)
+                    k3 = data(rBase + 2, cJ)
+                    ind_k = Len(k1) + Len(k2) + Len(k3)
+                    kk1 = "0"
+                    If Len(k1) > 0 Then kk1 = k1
+                    kk2 = ""
+                    If Len(k2) > 0 Then kk2 = "+" + k2
+                    kk3 = ""
+                    If Len(k3) > 0 Then kk3 = "+" + k3
+                    If ind_k > 0 Then
+                        USL_x = USL_x + "*(" + kk1 + kk2 + kk3 + ")"
+                        chsv = chsv + 1
+                    End If
+                Next jj
+                If IsNumeric(USL_x) = True Then USL_x = Str(USL_x) + "*()"
+            Else
+                USL_x = ""
+            End If
+            outArr(ii, 1) = USL_x
+        Next ii
+
+        ' запись результата по адресам Cells(5+(ii-1)*7+4, 16)
+        For ii = 1 To 19
+            ws.Cells(5 + (ii - 1) * 7 + 4, 16).Value = outArr(ii, 1)
+        Next ii
+
+        Call PrPro_DS(100 * (liss - 2) / (aa - 2), "Библиотека. Условия связи штуцеров!")
+    Next liss
+
+    chsv = Format(100 * chsv / (Worksheets.Count - 2), 0#) / 100
+    Worksheets("CODE").Cells(53, 12).Value = chsv
+End Sub
+
+
+' =====================================================================
+' PrPro_DS — троттлинг UI (~30 fps)
+' =====================================================================
+Sub PrPro_DS(progr As Double, procName As String)
+    Static lastT As Single
+    If progr > 100 Then progr = 100
+    If progr < 0 Then progr = 0
+    If progr < 100 And (Timer - lastT) < 0.03 Then Exit Sub
+    lastT = Timer
+    ufProgress.Label3.Caption = ">>> " + procName
+    ufProgress.Label2.Width = 0.01 + progr / 100 * ufProgress.FrameProgress.Width
+    ufProgress.Label1.Caption = Str(Format(progr * 100, 0#) / 100) + "%"
+    If InStr(ufProgress.Label1.Caption, ".") = 0 Then ufProgress.Label1.Caption = Replace(ufProgress.Label1.Caption, "%", ".0%")
+    If InStr(ufProgress.Label1.Caption, ".") > 0 Then
+        aa1 = Right(ufProgress.Label1.Caption, Len(ufProgress.Label1.Caption) - InStr(ufProgress.Label1.Caption, ".") + 1)
+        If Len(aa1) < 4 Then
+            ufProgress.Label1.Caption = Replace(ufProgress.Label1.Caption, "%", "0%")
+        End If
+    End If
+    DoEvents
+End Sub
+' =====================================================================
+' stati_DS
+' =====================================================================
+Sub stati_DS()
+    Dim wsCode As Worksheet
+    Set wsCode = Worksheets("CODE")
+
+    If wsCode.Cells(5, 58).Value < 2 Then Application.ScreenUpdating = False
+    gYes = 1
+    If gYes = 1 Then
+        ' число источников — пакетное чтение
+        Dim col54V As Variant
+        col54V = wsCode.Range(wsCode.Cells(63, 54), wsCode.Cells(15500, 54)).Value
+        i = 0
+        b = 0
+        II0 = 0
+        Do
+            If i + 1 > UBound(col54V, 1) Then Exit Do
+            a = col54V(i + 1, 1)
+            If a = "" Then
+                b = 1
+            Else
+                i = i + 1
+                If wsCode.Cells(62 + i, 54).Interior.Color = RGB(200, 50, 50) Then
+                    II0 = II0 + 1
+                End If
+            End If
+        Loop While b = 0
+        chi = i
+
+        ' число кранов — пакетное чтение
+        Dim col57V As Variant
+        col57V = wsCode.Range(wsCode.Cells(63, 57), wsCode.Cells(15500, 57)).Value
+        i = 0
+        b = 0
+        Do
+            If i + 1 > UBound(col57V, 1) Then Exit Do
+            a = col57V(i + 1, 1)
+            If a = "" Then
+                b = 1
+            Else
+                i = i + 1
+            End If
+        Loop While b = 0
+        chK = i
+
+        aa = Worksheets.Count
+        shsv = 0
+        Dim gArr4 As Variant
+        Dim kk4 As Long
+        Dim bbN As String
+        For i = 1 To aa
+            Call PrPro_DS(100 * (i - 2) / (aa - 2 + 0.0000000001), "Сбор статистики!")
+            bbN = Worksheets(i).Name
+            If bbN <> "CODE" And bbN <> "EX" Then
+                gArr4 = Worksheets(i).Range("G5:G131").Value
+                For kk4 = 1 To 19
+                    If Len(gArr4(1 + (kk4 - 1) * 7, 1)) > 1 Then
+                        shsv = shsv + 1
+                    End If
+                Next kk4
+            End If
+        Next i
+        shsv = shsv - (chi - II0)
+
+        For i = 87 To 109
+            If Len(wsCode.Cells(i, 19).Value) > 2 Then shsv = shsv + 1
+        Next i
+
+        wsCode.Cells(57, 56).Value = "*-число точек связи " + Str(shsv)
+        wsCode.Cells(58, 56).Value = "*-число листов с источниками " + Str(Worksheets.Count - 2)
+        wsCode.Cells(59, 56).Value = "*-число источников " + Str(chi) + " (" + Str(II0) + "-безусл., " + Str(chi - II0) + "-усл.)"
+        wsCode.Cells(60, 56).Value = "*-число арматур " + Str(chK)
+    End If
+    Application.ScreenUpdating = True
+End Sub
+
+' =====================================================================
+' sbor_c2_DS — ускоренная версия sbor_c2 (вход/выход/логика идентичны)
+' =====================================================================
+Sub sbor_c2_DS() 'метод 2 '*dell
+
+    Dim oldCalc As Long, oldEvents As Boolean, oldAlerts As Boolean, oldScreen As Boolean
+    oldCalc = Application.Calculation
+    oldEvents = Application.EnableEvents
+    oldAlerts = Application.DisplayAlerts
+    oldScreen = Application.ScreenUpdating
+
+    Dim wsCode As Worksheet
+    Set wsCode = Worksheets("CODE")
+
+    Call FURALL2
+    ufProgress.Show (0)
+    Application.ScreenUpdating = False
+    If wsCode.Cells(5, 58).Value < 2 Then Application.ScreenUpdating = False
+    Application.DisplayAlerts = False
+    Application.Calculation = xlCalculationManual
+    Application.EnableEvents = False
+
+    wsCode.Range("A60:A300000").ClearContents
+    wsCode.Range("A60:A300000").Interior.Color = wsCode.Cells(1, 1).Interior.Color
+    If wsCode.Cells(5, 58).Value > 0 Then Application.Wait (Now + TimeValue("0:00:01"))
+    Application.Calculate
+
+    '===== 2. Инициализация Scode* =====
+    Dim flag2_1 As Variant
+    flag2_1 = wsCode.Cells(2, 1).Value
+    Dim i As Long, j As Long, k As Long, gi As Long
+    If flag2_1 = 0 Then
+        For i = 0 To 2500
+            ScodeP(i) = ""
+            ScodeP2(i) = ""
+            ScodeF(i) = ""
+            ScodeU(i) = ""
+            ScodeU2(i) = ""
+            SBOR_dp(i) = ""
+        Next i
+    Else
+        For i = 0 To 2500
+            SBOR_dp(i) = ""
+        Next i
+    End If
+
+    '===== 3. cbu_0 (кэш цветов) =====
+    Dim defColor1 As Long, defColor2 As Long
+    defColor1 = wsCode.Cells(62, 48).Interior.Color   ' для cbu_0 и источника
+    defColor2 = wsCode.Cells(61, 48).Interior.Color   ' для ScodeTUP
+
+    cbu_0 = 0
+    i = 63
+    Dim cCol As Long
+    cCol = wsCode.Cells(i, 54).Interior.Color
+    Do
+        If cCol = defColor1 Then cbu_0 = cbu_0 + 1
+        i = i + 1
+        cCol = wsCode.Cells(i, 54).Interior.Color
+    Loop While cCol = defColor1
+
+    '===== 4. Norm_24k =====
+    Norm_24k(1) = ""
+    Norm_24k(1) = Norm_24k(1) + "for (int ttyr=" + Str(cbu_0) + ";ttyr<" + Str(Worksheets.Count - 2) + ";ttyr++)" + Chr(13) + Chr(10)
+    Norm_24k(1) = Norm_24k(1) + "{" + Chr(13) + Chr(10)
+    Norm_24k(1) = Norm_24k(1) + "for (int tty_1=1;tty_1<7;tty_1++)" + Chr(13) + Chr(10)
+    Norm_24k(1) = Norm_24k(1) + "{" + Chr(13) + Chr(10)
+    Norm_24k(1) = Norm_24k(1) + "aa3=0;" + Chr(13) + Chr(10)
+    Norm_24k(1) = Norm_24k(1) + "for (int tty_2=1;tty_2<5;tty_2++)" + Chr(13) + Chr(10)
+    Norm_24k(1) = Norm_24k(1) + "{" + Chr(13) + Chr(10)
+    Norm_24k(1) = Norm_24k(1) + "aa3=aa3+ KU2_r[ttyr,tty_1,tty_2]+e27/4;" + Chr(13) + Chr(10)
+    Norm_24k(1) = Norm_24k(1) + "}" + Chr(13) + Chr(10)
+    Norm_24k(1) = Norm_24k(1) + "for (int tty_2=1;tty_2<5;tty_2++)" + Chr(13) + Chr(10)
+    Norm_24k(1) = Norm_24k(1) + "{" + Chr(13) + Chr(10)
+    Norm_24k(1) = Norm_24k(1) + "KU2_r[ttyr,tty_1,tty_2]=(KU2_r[ttyr,tty_1,tty_2]+e27/4)/aa3;" + Chr(13) + Chr(10)
+    Norm_24k(1) = Norm_24k(1) + "}" + Chr(13) + Chr(10)
+    Norm_24k(1) = Norm_24k(1) + "}" + Chr(13) + Chr(10)
+    Norm_24k(1) = Norm_24k(1) + "}" + Chr(13) + Chr(10)
+
+    '===== 5. Словарь насосов =====
+    Dim pumpDict As Object
+    Set pumpDict = CreateObject("Scripting.Dictionary")
+    Dim pArr19 As Variant, pArr29 As Variant, pArr30 As Variant
+    pArr19 = wsCode.Range(wsCode.Cells(86, 19), wsCode.Cells(169, 19)).Value
+    pArr29 = wsCode.Range(wsCode.Cells(86, 29), wsCode.Cells(169, 29)).Value
+    pArr30 = wsCode.Range(wsCode.Cells(86, 30), wsCode.Cells(169, 30)).Value
+    Dim pIdx As Long, pKey As String
+    For pIdx = 1 To 84
+        If Len(pArr19(pIdx, 1)) > 1 Then
+            If Len(pArr29(pIdx, 1)) > 0 Then
+                pKey = CStr(pArr29(pIdx, 1))
+                If Not pumpDict.Exists(pKey) Then pumpDict.Add pKey, 1
+            End If
+            If Len(pArr30(pIdx, 1)) > 0 Then
+                pKey = CStr(pArr30(pIdx, 1))
+                If Not pumpDict.Exists(pKey) Then pumpDict.Add pKey, 1
+            End If
+        End If
+    Next pIdx
+
+    '===== 6. ScodeTUP (обе части) =====
+    Dim ScodeTUP As String
+    Dim ima_tek As Variant
+    Dim nas_p As Long
+
+    ScodeTUP = ""
+    ScodeTUP = ScodeTUP + "if (tup_ind == 0)" + Chr(13) + Chr(10)
+    ScodeTUP = ScodeTUP + "{" + Chr(13) + Chr(10)
+    ScodeTUP = ScodeTUP + "for (int ttyr=1;ttyr<10;ttyr++)" + Chr(13) + Chr(10)
+    ScodeTUP = ScodeTUP + "{" + Chr(13) + Chr(10)
+
+    i = 63
+    Do
+        If wsCode.Cells(i, 54).Interior.Color = defColor2 Then
+            ScodeTUP = ScodeTUP + "ISTO_p[" + Str(i - 62) + "]" + "=ISTO_p[ISTO_n[" + Str(i - 62) + "]]+ISTO_dp[" + Str(i - 62) + "];" + Chr(13) + Chr(10)
+        End If
+        ima_tek = wsCode.Cells(i, 54).Value
+        nas_p = 0
+        If pumpDict.Exists(CStr(ima_tek)) Then nas_p = 1
+        If nas_p = 1 Then
+            ScodeTUP = ScodeTUP + "ISTO_p[" + Str(i - 62) + "]" + "=ISTO_p[ISTO_n[" + Str(i - 62) + "]]+ISTO_dp[" + Str(i - 62) + "];" + Chr(13) + Chr(10)
+        End If
+        i = i + 1
+    Loop While Len(wsCode.Cells(i, 54).Value) > 1
+
+    ScodeTUP = ScodeTUP + "}" + Chr(13) + Chr(10)
+
+    i = 63
+    Do
+        ima_tek = wsCode.Cells(i, 54).Value
+        If wsCode.Cells(i, 54).Interior.Color = defColor2 Then
+            ScodeTUP = ScodeTUP + ima_tek + "=ISTO_p[ISTO_n[" + Str(i - 62) + "]]+ISTO_dp[" + Str(i - 62) + "];" + Chr(13) + Chr(10)
+        End If
+        nas_p = 0
+        If pumpDict.Exists(CStr(ima_tek)) Then nas_p = 1
+        If nas_p = 1 Then
+            ScodeTUP = ScodeTUP + ima_tek + "=ISTO_p[ISTO_n[" + Str(i - 62) + "]]+ISTO_dp[" + Str(i - 62) + "];" + Chr(13) + Chr(10)
+        End If
+        ScodeTUP = ScodeTUP + "p" + ima_tek + "=1;" + Chr(13) + Chr(10)
+        i = i + 1
+    Loop While Len(wsCode.Cells(i, 54).Value) > 1
+
+    ScodeTUP = ScodeTUP + "}" + Chr(13) + Chr(10)
+
+    '===== 7. Инициализация ch/dh =====
+    For i = 1 To 5
+        ch(i) = ""
+        dh(i) = ""
+    Next i
+    wsCode.Cells(6, 4).Value = ""
+    wsCode.Cells(6, 14).Value = ""
+    aa = Worksheets.Count
+    od = 1
+    ndo = 0
+
+    Dim myDOUB0 As New DataObject
+
+    '===== 8. Предварительные batch-чтения диапазонов CODE =====
+    Dim rangeAK_AL As Variant, rangeFUR1 As Variant, rangeFUR2 As Variant
+    Dim rangeAO As Variant, rangeCONV As Variant
+    rangeAK_AL = wsCode.Range(wsCode.Cells(67, 37), wsCode.Cells(167, 38)).Value
+    rangeFUR1 = wsCode.Range(wsCode.Cells(379, 37), wsCode.Cells(416, 37)).Value
+    rangeFUR2 = wsCode.Range(wsCode.Cells(454, 34), wsCode.Cells(524, 39)).Value
+    rangeAO = wsCode.Range(wsCode.Cells(452, 41), wsCode.Cells(522, 41)).Value
+    rangeCONV = wsCode.Range(wsCode.Cells(250, 35), wsCode.Cells(327, 35)).Value
+
+    Dim flag5_58 As Variant
+    flag5_58 = wsCode.Cells(5, 58).Value
+
+    Dim provT As Long, contT As Long, idx As Long, sIdx As Long, cIdx As Long, rIdx As Long
+    Dim immm As Variant, v73 As Variant
+    Dim colA As Variant
+    Dim bb As String
+
+    Application.ScreenUpdating = True
+
+    '===== 9. Основной цикл по листам =====
+    For i = 1 To aa
+        Call PrPro_s2(100 * (i - 2) / (aa - 2), "Сбор уравнений с листов!")
+        If flag5_58 < 2 Then Application.ScreenUpdating = False
+        If i > 40 Then od = 2
+        If i > 80 Then od = 3
+        If i > 120 Then od = 4
+        If i > 160 Then od = 5
+
+        bb = ActiveWorkbook.Sheets(i).Name
+        If bb <> "CODE" And bb <> "EX" Then
+
+            Worksheets(i).Activate
+            ScodeU(i) = ScodeU(i) + Chr(13) + Chr(10) + ScodeU2(i) + Chr(13) + Chr(10) + "//AI_Comments_Replace:" + Str(i)
+
+            If flag2_1 = 0 Then
+                colA = Worksheets(i).Range("A18:A68").Value
+                ScodeP(i) = colA(1, 1) + Chr(13) + Chr(10)     ' A18
+                ScodeP2(i) = colA(8, 1) + Chr(13) + Chr(10)    ' A25
+                ScodeF(i) = colA(15, 1) + Chr(13) + Chr(10)    ' A32
+                ScodeU(i) = colA(28, 1) + Chr(13) + Chr(10)    ' A45
+                ScodeU2(i) = colA(51, 1) + Chr(13) + Chr(10)   ' A68
+            End If
+
+            immm = Worksheets(i).Cells(4, 4).Value
+            v73 = Worksheets(i).Cells(73, 1).Value
+            SBOR_dp(i) = "// dP по штуцерам, источник: " + immm + Chr(13) + Chr(10) + v73
+
+            ' теплообменник
+            provT = 0
+            For idx = 1 To 101
+                If rangeAK_AL(idx, 1) = immm Then provT = idx
+                If rangeAK_AL(idx, 2) = immm Then provT = idx
+            Next idx
+            If provT > 0 Then
+                ScodeU(i) = ScodeU(i) + TO_ur(provT)
+            End If
+
+            ' печь 1
+            provT = 0
+            For idx = 1 To 38
+                If rangeFUR1(idx, 1) = immm Then provT = idx
+            Next idx
+            If provT > 0 Then
+                ScodeU(i) = ScodeU(i) + FUR_ur(provT)
+            End If
+
+            ' печь 2
+            provT = 0
+            contT = 0
+            For sIdx = 0 To 10
+                rIdx = 1 + sIdx * 7
+                For cIdx = 1 To 6
+                    If rangeFUR2(rIdx, cIdx) = immm Then
+                        provT = rangeAO(rIdx, 1)
+                        contT = cIdx
+                    End If
+                Next cIdx
+            Next sIdx
+
+            If contT > 0 Then
+                ScodeU(i) = Replace(ScodeU(i), "GTc" + immm + "=", "GGG" + immm + "=")
+                ScodeU(i) = Replace(ScodeU(i), "Tc" + immm + "=", "XX0[99]=")
+                ScodeU(i) = Replace(ScodeU(i), "GGG" + immm + "=", "GTc" + immm + "=")
+            End If
+            If provT * contT > 0 Then
+                ScodeU(i) = ScodeU(i) + Chr(13) + Chr(10) + FUR2_ur(provT, contT)
+            End If
+
+            ' конверсия
+            provT = 0
+            For sIdx = 0 To 11
+                If rangeCONV(1 + sIdx * 7, 1) = immm Then provT = sIdx + 1
+            Next sIdx
+            If provT > 0 Then
+                ScodeU(i) = ScodeU(i) + CONV_ur(provT)
+            End If
+
+            If flag5_58 > 0 Then Application.Wait (Now + TimeValue("0:00:01"))
+            Application.CutCopyMode = False
+            Application.Wait (Now)
+        End If
+    Next i
+
+    wsCode.Activate
+    If flag5_58 < 2 Then Application.ScreenUpdating = False
+
+    '===== 10. Жёстко зашитые double =====
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double ks1=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double ks2=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double ks3=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double MAIN_c=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double Vg_s=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double Vl_s=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double Vw_s=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double aa0=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double aa1=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double aa2=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double aa3=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double h001=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double h002=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double h003=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double h004=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double xcc1=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double xcc2=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double xcc3=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double RP_1=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double RP_2=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double RP_3=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double RP_4=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double kerr=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double tst=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double e27=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double tup_ind=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double pmin=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double pmax=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double Tc_vozd=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double paa01=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double paa02=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double aa03=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double aa04=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double aa05=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double aa06=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double aa003=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double aa004=0;"
+
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double zZA=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double zZB=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double zZC=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double zZD=0;"
+
+    '===== 11. Доп. уровни тупиков =====
+    Dim a36 As Long
+    Dim za As Variant, zb As Variant, zc As Variant, zd As Variant
+    Dim nmat As Variant, vP As Variant, np As Variant, iSOO As Variant
+    Dim zabcd As Variant, l_tup As String
+    For i = 210 To 669
+        a36 = 0
+        If i > 240 Then a36 = 1
+        If i > 556 Then a36 = 0
+        If a36 = 0 Then
+            za = wsCode.Cells(i, 36).Value
+            zb = wsCode.Cells(i, 37).Value
+            zc = wsCode.Cells(i, 38).Value
+            zd = wsCode.Cells(i, 39).Value
+            nmat = wsCode.Cells(i, 40).Value
+            vP = wsCode.Cells(i, 41).Value
+            np = wsCode.Cells(i, 42).Value
+            iSOO = wsCode.Cells(i, 43).Value
+            If Left(nmat, 2) = "L_" Then nmat = Right(nmat, Len(nmat) - 2)
+            If (Len(za) + Len(zb) + Len(zc) + Len(zd)) * Len(nmat) * Len(vP) * Len(np) * Len(iSOO) > 0 Then
+                ch_doub = ch_doub + 1
+                l_tup = Replace("L_" + nmat + "_tup", " ", "")
+                i_doub(ch_doub) = "double " + l_tup + "=0;"
+                For j = 36 To 39
+                    zabcd = wsCode.Cells(i, j).Value
+                    If Len(zabcd) > 1 Then
+                        If IsNumeric(zabcd) = False Then
+                            fff = SPLIT_i((zabcd))
+                            For k = 1 To n_spl
+                                ch_doub = ch_doub + 1
+                                i_doub(ch_doub) = "double " + I_spl(k) + "=0;"
+                            Next k
+                        End If
+                    End If
+                Next j
+            End If
+        End If
+    Next i
+
+    '===== 12. Продолжение double =====
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double ro_c1=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double ro_c2=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double ro_c3=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double ro_c4=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double ro_c5=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double ro_c6=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double K_v=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double K_tau=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double K_fff=0;"
+
+    dh(0) = ""
+    dh(2) = ""
+
+    ' насосы
+    Dim v19 As Variant
+    For i = 86 To 169
+        v19 = wsCode.Cells(i, 19).Value
+        If Not v19 = "" Then
+            ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("Kpop_" + v19, " ", "") + "=0;"
+            ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("INI_" + v19, " ", "") + "=0;"
+            ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("" + v19, " ", "") + "=0;"
+        End If
+    Next i
+
+    ' теплообменники
+    Dim v42 As Variant
+    For i = 67 To 167
+        v42 = wsCode.Cells(i, 42).Value
+        If Not v42 = "" Then
+            ch_doub = ch_doub + 1
+            i_doub(ch_doub) = "double " + v42 + "=0;"
+        End If
+    Next i
+
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double S_out=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double S_in=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double W_out=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double W_in=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double L_out=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double L_in=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double G_out=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double G_in=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double dL=0;"
+    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double dG=0;"
+
+    ' печи 2
+    Dim ipip As Variant
+    For i = 452 To 522 Step 7
+        ipip = wsCode.Cells(i, 40).Value
+        If Len(ipip) > 0 Then
+            ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("T0_" + ipip, " ", "") + "=0;"
+            ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("T1_" + ipip, " ", "") + "=0;"
+            ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("Tkr_" + ipip, " ", "") + "=0;"
+            ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("P1_" + ipip, " ", "") + "=0;"
+            ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("P2_" + ipip, " ", "") + "=0;"
+            ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("Qk_" + ipip, " ", "") + "=0;"
+            ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("Qr_" + ipip, " ", "") + "=0;"
+            ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("T3_" + ipip, " ", "") + "=0;"
+            ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("KIG_" + ipip, " ", "") + "=0;"
+        End If
+    Next i
+
+    ' доп арматуры
+    Dim ima_da As Variant, prov As Long
+    For i = 432 To 931
+        ima_da = wsCode.Cells(i, 32).Value
+        prov = 0
+        If Len(ima_da) < 2 Then prov = 1
+        If IsNumeric(ima_da) = True Then prov = 1
+        If prov = 0 Then
+            fff = SPLIT_i((Replace(ima_da, " ", "")))
+            For k = 1 To n_spl
+                ch_doub = ch_doub + 1
+                i_doub(ch_doub) = "double " + I_spl(k) + "=0;"
+            Next k
+        End If
+    Next i
+
+    ' доп источники
+    Dim ima_nm As Variant
+    For i = 432 To 931
+        ima_nm = wsCode.Cells(i, 30).Value
+        prov = 0
+        If Len(ima_nm) < 2 Then prov = 1
+        If IsNumeric(ima_nm) = True Then prov = 1
+        If prov = 0 Then
+            ch_doub = ch_doub + 1
+            i_doub(ch_doub) = "double " + Replace(ima_nm + "_tup", " ", "") + "=0;"
+            ch_doub = ch_doub + 1
+            i_doub(ch_doub) = "double " + Replace("Tc" + ima_nm + "_tup", " ", "") + "=0;"
+        End If
+    Next i
+
+    ' ППК
+    Dim v94 As Variant, v100 As Variant, v104 As Variant, v108 As Variant
+    For op = 7 To 24
+        v94 = wsCode.Cells(op, 94).Value
+        If Len(v94) > 1 Then
+            ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + v94 + "=0;"
+        End If
+        v100 = wsCode.Cells(op, 100).Value
+        If Len(v100) > 1 Then
+            ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + v100 + "=0;"
+        End If
+    Next op
+    For op = 7 To 50
+        v104 = wsCode.Cells(op, 104).Value
+        If Len(v104) > 1 Then
+            ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + v104 + "=0;"
+        End If
+        v108 = wsCode.Cells(op, 108).Value
+        If Len(v108) > 1 Then
+            ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + v108 + "=0;"
+        End If
+    Next op
+
+    ' доп пресеты
+    Dim oo As Long
+    Dim im As Variant, zn As Variant
+    Dim sCell81 As String, sCell83 As String
+    oo = 63
+    wsCode.Cells(5, 81).Value = ""
+    wsCode.Cells(5, 83).Value = ""
+    sCell81 = ""
+    sCell83 = ""
+    Do
+        im = wsCode.Cells(oo, 91).Value
+        zn = wsCode.Cells(oo, 92).Value
+        If Len(im) > 1 Then
+            sCell81 = sCell81 + im + " = " + Str(zn) + ";" + Chr(13) + Chr(10)
+            sCell83 = sCell83 + "double " + im + " = 0;" + Chr(13) + Chr(10)
+            oo = oo + 1
+        End If
+    Loop Until wsCode.Cells(oo, 91).Value = ""
+    wsCode.Cells(5, 81).Value = sCell81
+    wsCode.Cells(5, 83).Value = sCell83
+
+    '===== 13. Сбор даблов по источникам (батч) =====
+    Dim flag28_74 As Variant
+    flag28_74 = wsCode.Cells(28, 74).Value
+
+    Dim srcArr As Variant
+    srcArr = wsCode.Range(wsCode.Cells(63, 54), wsCode.Cells(15000, 54)).Value
+    Dim srcCount As Long
+    srcCount = 0
+    Do
+        srcCount = srcCount + 1
+        If Len(srcArr(srcCount, 1)) <= 1 Then Exit Do
+        If srcCount >= 15000 Then Exit Do
+    Loop
+    srcCount = srcCount - 1
+
+    Dim imIST As Variant
+    Dim yu As Long
+    For gi = 1 To srcCount
+        imIST = srcArr(gi, 1)
+
+        ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("" + imIST, " ", "") + "=0;"
+        ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("p" + imIST, " ", "") + "=0;"
+        ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("Tc" + imIST, " ", "") + "=0;"
+        ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("Tc_2" + imIST, " ", "") + "=0;"
+        ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("GTc" + imIST, " ", "") + "=0;"
+        ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("Fm" + imIST, " ", "") + "=0;"
+        ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("Fvn_" + imIST, " ", "") + "=0;"
+        ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("Lg_o" + imIST, " ", "") + "=0;"
+        ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("Lg" + imIST, " ", "") + "=0;"
+        ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("Lm_o" + imIST, " ", "") + "=0;"
+        ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("Lm" + imIST, " ", "") + "=0;"
+        ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("Gm_o" + imIST, " ", "") + "=0;"
+        ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("Gm" + imIST, " ", "") + "=0;"
+        ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("L_" + imIST, " ", "") + "=0;"
+        ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("Lw_" + imIST, " ", "") + "=0;"
+        ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("Em" + imIST, " ", "") + "=0;"
+        ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("ro" + imIST, " ", "") + "=0;"
+        ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("ro_n" + imIST, " ", "") + "=0;"
+        ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("rol" + imIST, " ", "") + "=0;"
+        ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("rog" + imIST, " ", "") + "=0;"
+        For yu = 1 To 6
+            ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("U" + Str(yu) + imIST, " ", "") + "=0;"
+            ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("U" + Str(yu) + imIST + "_L", " ", "") + "=0;"
+            ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("U" + Str(yu) + imIST + "_G", " ", "") + "=0;"
+        Next yu
+
+        If flag28_74 = 1 Then
+            If wsCode.Cells(62 + gi, 54).Interior.Color = defColor1 Then
+                For yu = 1 To 6
+                    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("U" + Str(yu) + "_1" + imIST, " ", "") + "=0;"
+                    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("U" + Str(yu) + "_2" + imIST, " ", "") + "=0;"
+                    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("U" + Str(yu) + "_3" + imIST, " ", "") + "=0;"
+                    ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("U" + Str(yu) + "_4" + imIST, " ", "") + "=0;"
+                Next yu
+            End If
+        End If
+
+        Call PrPro_s2(100 * (62 + gi) / (aa * 1.23 - 2 + 0.0001), "Собираем источники для double.")
+    Next gi
+
+    '===== 14. Сбор даблов по задвижкам (батч) =====
+    Dim zadArr As Variant
+    zadArr = wsCode.Range(wsCode.Cells(63, 57), wsCode.Cells(15000, 57)).Value
+    Dim zadCount As Long
+    zadCount = 0
+    Do
+        zadCount = zadCount + 1
+        If Len(zadArr(zadCount, 1)) <= 1 Then Exit Do
+        If zadCount >= 15000 Then Exit Do
+    Loop
+    zadCount = zadCount - 1
+
+    Dim imZAD As Variant
+    For gi = 1 To zadCount
+        imZAD = zadArr(gi, 1)
+        ch_doub = ch_doub + 1
+        i_doub(ch_doub) = "double " + Replace("" + imZAD, " ", "") + "=0;"
+        Call PrPro_s2(100 * (gi - 1) / (3 * aa - 2 + 0.0001), "Собираем задвижки для double.")
+    Next gi
+
+    '===== 15. Печи и конверторы (малые циклы) =====
+    Dim imPe As Variant
+    For i = 379 To 416
+        imPe = wsCode.Cells(i, 35).Value
+        If Len(imPe) > 1 Then
+            ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("T0_" + imPe, " ", "") + "=0;"
+            ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("T1_" + imPe, " ", "") + "=0;"
+            ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("Tkr_" + imPe, " ", "") + "=0;"
+            ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("P1_" + imPe, " ", "") + "=0;"
+            ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("P2_" + imPe, " ", "") + "=0;"
+            ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("Qk_" + imPe, " ", "") + "=0;"
+            ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("Qr_" + imPe, " ", "") + "=0;"
+            ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("T3_" + imPe, " ", "") + "=0;"
+            ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("KIG_" + imPe, " ", "") + "=0;"
+        End If
+    Next i
+    For i = 250 To 327 Step 7
+        imPe = wsCode.Cells(i, 35).Value
+        If Len(imPe) > 1 Then
+            ch_doub = ch_doub + 1
+            i_doub(ch_doub) = "double " + Replace("Ac_" + imPe, " ", "") + "=0;"
+        End If
+    Next i
+
+    '===== 16. Сбор связей (Dictionary вместо O(n?)) =====
+    aa = Worksheets.Count
+    Dim svDict As Object
+    Set svDict = CreateObject("Scripting.Dictionary")
+    ch_sv = 0
+    Dim ima1 As Variant, ima2 As Variant
+    Dim gArr5 As Variant
+    Dim gk As Long
+    Dim svKey As String
+    Dim ima2s As String
+
+    For i = 3 To aa
+        Call PrPro_s2(100 * (i - 2) / (aa - 2 + 0.0001), "Собираем связи для double.")
+        ima1 = Worksheets(i).Cells(4, 4).Value
+        gArr5 = Worksheets(i).Range("G5:G131").Value
+        For gk = 1 To 19
+            ima2 = gArr5(1 + (gk - 1) * 7, 1)
+            If Len(ima2) > 1 Then
+                svKey = Replace(ima2 + ima1, " ", "")
+                If Not svDict.Exists(svKey) Then
+                    svDict.Add svKey, 1
+                    ch_sv = ch_sv + 1
+                    list_sv(ch_sv) = svKey
+                End If
+            End If
+        Next gk
+    Next i
+
+    For i = 1 To ch_sv
+        ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("Fc" + list_sv(i), " ", "") + "=0;"
+        ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("Pr_Fc" + list_sv(i), " ", "") + "=0;"
+        ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("Fv" + list_sv(i), " ", "") + "=0;"
+        ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("Kv" + list_sv(i), " ", "") + "=0;"
+        ch_doub = ch_doub + 1: i_doub(ch_doub) = "double " + Replace("ro" + list_sv(i), " ", "") + "=0;"
+        Call PrPro_s2(100 * (i) / (ch_sv + 0.0001), "Формируем double для связей.")
+    Next i
+
+    '===== 17. Ликвидация дублей через Dictionary =====
+    Dim DUB_D(2000) As String
+    Dim n_Dub(200000) As String
+    Dim seenDict As Object
+    Set seenDict = CreateObject("Scripting.Dictionary")
+    n_ch = 0
+    dub_ch = 0
+    Dim key As String
+    For i = 1 To ch_doub
+        key = CStr(i_doub(i))
+        If seenDict.Exists(key) Then
+            dub_ch = dub_ch + 1
+            DUB_D(dub_ch) = i_doub(i)
+        Else
+            seenDict.Add key, 1
+            n_ch = n_ch + 1
+            n_Dub(n_ch) = i_doub(i)
+        End If
+        Call PrPro_s2(100 * (i) / (ch_doub + 0.0001), "Поиск дублей для всех double.")
+    Next i
+
+    list_dub = "Найдено для double " + Str(dub_ch) + " дублей! Всего строк для double: " + Str(n_ch) + Chr(13) + Chr(10)
+    For i = 1 To dub_ch
+        list_dub = list_dub + Str(i) + " " + DUB_D(i) + Chr(13) + Chr(10)
+    Next i
+
+    If dub_ch > 0 Then
+        Dim fn13 As String
+        fn13 = IMA_f("_D_DOUBLE") + ".txt"
+        Open fn13 For Output As #3
+        Print #3, list_dub
+        Close #3
+        MsgBox ("Найдено для double " + Str(dub_ch) + " дублей! Всего строк для double: " + Str(n_ch) + Chr(13) + Chr(10) + "Файл с дублями сохранен:" + Chr(13) + Chr(10) + fn13)
+    End If
+
+    '===== 18. Возврат собранного массива =====
+    wsCode.Cells(6, 14).Value = ""
+    o = 0
+    For i = 1 To n_ch
+        Call PrPro_s2(100 * (i) / (ch_doub), "Фильтрация double!")
+        o = o + 1
+        Idoub(o) = n_Dub(i)
+    Next i
+    chdoub = o
+
+    wsCode.Range("A60:A235060").ClearContents
+    wsCode.Range("A60:A235060").Interior.Color = wsCode.Cells(1, 1).Interior.Color
+
+    '===== 19. Восстановление настроек =====
+    Application.DisplayAlerts = oldAlerts
+    Application.Calculation = oldCalc
+    Application.EnableEvents = oldEvents
+    Application.ScreenUpdating = oldScreen
+
+    Unload ufProgress
+End Sub
+
+
+Sub ImportSheet_02_DS()
+ufProgress.Show (0)
+Call st_0
+'ChDir DIR_my
+OpenPath = ThisWorkbook.path
+ChDrive OpenPath
+ChDir OpenPath
+'sImportFile = Application.GetOpenFilename( _
+ '   FileFilter:="Microsoft Excel Workbooks, *.xlsm; *.xlsb; *.xls; *.xlsx")
+'Call PrPro(5, "Заполнение листа CODE!")
+' собираем имена листов
+Dim sh_old(3000) As String
+Dim aa_old As Single
+aa_old = Worksheets.Count
+If aa_old < 3 Then
+Worksheets("EX").Activate
+Call plus_sheet
+Worksheets("CODE").Activate
+End If
+
+
+tip_ex = Worksheets("CODE").Cells(5, 13).Value
+opo_101 = 1
+
+
+For i = 3 To aa_old
+sh_old(i) = Worksheets(i).Name
+Next i
+
+    Dim sImportFile As String, sFile As String
+    Dim sThisBk As Workbook
+    Dim impSh As Worksheet
+    Dim vfilename As Variant
+    Dim oNewRow As ListRow
+    Dim svod As ListObjects
+
+    If Worksheets("CODE").Cells(5, 58).Value < 2 Then Application.ScreenUpdating = False
+    Application.DisplayAlerts = False
+
+    Set sThisBk = ActiveWorkbook
+    
+    If Worksheets("CODE").Cells(1, 1).Value = 0 Then
+    sImportFile = UserForm8.TextBox1.Text
+    Else
+    sImportFile = Application.GetOpenFilename( _
+    FileFilter:="Microsoft Excel Workbooks, *.xlsm; *.xlsb; *.xls; *.xlsx")
+    End If
+    
+    
+    
+    If sImportFile = "False" Then
+        MsgBox "Ничего не выбрано!"
+        Unload ufProgress
+        Exit Sub
+
+    Else        'из выбранного файла выделяем путь к файлу
+
+
+'If tip_ex = 2 Then
+'MsgBox ("Вы выбрали второй метод загрузки файла - использование архива. Дайте ссылку на данный архив!")
+'sImportFile2 = Application.GetOpenFilename( _
+'    FileFilter:="Microsoft Excel Workbooks, *.txt;  *.csv")
+ 
+'    If sImportFile2 = "False" Then
+'        MsgBox "Ничего не выбрано!"
+'        Unload ufProgress
+'        Exit Sub
+'        End If
+' End If
+        
+'answer = vbYes
+
+
+If Worksheets("CODE").Cells(1, 1).Value = 0 Then
+answer = vbYes
+Else
+answer = vbYes
+If sThisBk.Worksheets.Count > 2 Then
+    answer = MsgBox("При повторении имен листов, будет сохранен лист текущей книги!!!" + Chr(13) + Chr(10) + "Удалить все листы из текущей книги и вставить из новой? В случае ответа <НЕТ> лист код не будет заполнен!", vbQuestion + vbYesNo + vbDefaultButton2, "Внимание!")
+End If
+End If
+If answer = vbYes Then
+Application.ScreenUpdating = False
+    Application.DisplayAlerts = False
+    aa12 = Worksheets.Count - 2
+    st_i = 0
+    For i = Worksheets.Count To 1 Step -1
+    st_i = st_i + 1
+    aa = 1
+        If ActiveWorkbook.Sheets(i).Name = "CODE" Then aa = 0
+        If ActiveWorkbook.Sheets(i).Name = "EX" Then aa = 0
+        If aa = 1 Then
+    Sheets(i).Delete ' удаление всех листов из активной книги
+    End If
+    Call PrPro(st_i * 100 / (1 + aa12), "Удаляем листы текущих связей!")
+    Next i
+    Application.DisplayAlerts = True
+End If
+
+    Call PrPro(0, "Открываем файл источника!")
+ua_time = ((Day(Time) * 24 + Hour(Time)) * 60 + Minute(Time)) * 60 + Second(Time)
+        vfilename = Split(sImportFile, "\")
+        sFile = vfilename(UBound(vfilename))
+        Application.Workbooks.Open Filename:=sImportFile
+                'открываем файл по ссылке и лист с указанным названием
+        Set wbBk = Workbooks(sFile)
+Call PrPro(5, "Заполнение листа CODE!")
+sac = -2
+Call PrPro(10, "Заполнение листа CODE!")
+
+
+a558_1 = wbBk.Worksheets("CODE").Cells(5, 58).Value
+a558_2 = sThisBk.Worksheets("CODE").Cells(5, 58).Value
+wbBk.Worksheets("CODE").Cells(5, 58).Value = 1
+sThisBk.Worksheets("CODE").Cells(5, 58).Value = 1
+
+
+
+        For Each impSh In wbBk.Sheets
+        sac = sac + 1
+        aa = 1
+
+
+If impSh.Name = "CODE" Then
+        aa = 0
+        Call PrPro(11, "Заполнение листа CODE!")
+
+'answer = vbYes
+If answer = vbYes Then
+Application.ScreenUpdating = False
+'копируем модули
+impSh.Cells(5, 58).Value = 1
+sThisBk.Worksheets("CODE").Cells(20, 62).Value = impSh.Cells(20, 62).Value
+sThisBk.Worksheets("CODE").Cells(23, 62).Value = impSh.Cells(23, 62).Value
+sThisBk.Worksheets("CODE").Cells(27, 61).Value = impSh.Cells(27, 61).Value
+sThisBk.Worksheets("CODE").Cells(28, 74).Value = impSh.Cells(28, 74).Value
+aa90 = 0
+If impSh.Cells(28, 74).Value = 1 Then aa90 = 1
+If impSh.Cells(28, 74).Value = 2 Then aa90 = 2
+If aa90 = 0 Then sThisBk.Worksheets("CODE").Cells(28, 74).Value = 1
+
+        ' копируем данные по консолидации библиотек и утилит
+       sThisBk.Worksheets("CODE").Cells(8, 167).Value = impSh.Cells(8, 167).Value
+       sThisBk.Worksheets("CODE").Cells(9, 167).Value = impSh.Cells(9, 167).Value
+       sThisBk.Worksheets("CODE").Cells(8, 171).Value = impSh.Cells(8, 171).Value
+       sThisBk.Worksheets("CODE").Cells(9, 171).Value = impSh.Cells(9, 171).Value
+       sThisBk.Worksheets("CODE").Cells(8, 175).Value = impSh.Cells(8, 175).Value
+       sThisBk.Worksheets("CODE").Cells(9, 175).Value = impSh.Cells(9, 175).Value
+
+            ' копируем насосы (блоком)
+    sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(86, 16), sThisBk.Worksheets("CODE").Cells(169, 31)).Value = impSh.Range(impSh.Cells(86, 16), impSh.Cells(169, 31)).Value
+                ' копируем доп уровни 1
+    sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(210, 36), sThisBk.Worksheets("CODE").Cells(240, 44)).Value = impSh.Range(impSh.Cells(210, 36), impSh.Cells(240, 44)).Value
+                    ' копируем доп уровни 2
+    sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(557, 36), sThisBk.Worksheets("CODE").Cells(669, 44)).Value = impSh.Range(impSh.Cells(557, 36), impSh.Cells(669, 44)).Value
+    ' компоненты 24К
+    sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(246, 3), sThisBk.Worksheets("CODE").Cells(284, 13)).Value = impSh.Range(impSh.Cells(246, 3), impSh.Cells(284, 13)).Value
+    ' копируем насосы OI
+    sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(7, 86), sThisBk.Worksheets("CODE").Cells(21, 89)).Value = impSh.Range(impSh.Cells(7, 86), impSh.Cells(21, 89)).Value
+    aa1 = aa1
+    ' копируем PPK 1
+    sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(7, 92), sThisBk.Worksheets("CODE").Cells(24, 94)).Value = impSh.Range(impSh.Cells(7, 92), impSh.Cells(24, 94)).Value
+    ' копируем PPK 2
+    sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(7, 98), sThisBk.Worksheets("CODE").Cells(24, 100)).Value = impSh.Range(impSh.Cells(7, 98), impSh.Cells(24, 100)).Value
+        ' копируем PPK 3
+    sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(7, 102), sThisBk.Worksheets("CODE").Cells(50, 104)).Value = impSh.Range(impSh.Cells(7, 102), impSh.Cells(50, 104)).Value
+    Call PrPro(15, "Заполнение листа CODE!")
+            ' копируем PPK 4
+    sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(7, 106), sThisBk.Worksheets("CODE").Cells(50, 108)).Value = impSh.Range(impSh.Cells(7, 106), impSh.Cells(50, 108)).Value
+    ' копируем данные для OI
+    sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(21, 74), sThisBk.Worksheets("CODE").Cells(25, 81)).Value = impSh.Range(impSh.Cells(21, 74), impSh.Cells(25, 81)).Value
+Call PrPro(25, "Заполнение листа CODE!")
+    ' копируем данные для СМЖР
+    sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(186, 7), sThisBk.Worksheets("CODE").Cells(205, 13)).Value = impSh.Range(impSh.Cells(186, 7), impSh.Cells(205, 13)).Value
+Call PrPro(30, "Заполнение листа CODE!")
+    'удаляем всю библиотеку
+    sThisBk.Activate
+sThisBk.Worksheets("CODE").Range(Cells(63, 54), Cells(5000, 83)).ClearContents
+sThisBk.Worksheets("CODE").Range(Cells(63, 95), Cells(5000, 96)).ClearContents
+sThisBk.Worksheets("CODE").Range(Cells(63, 328), Cells(5000, 352)).ClearContents
+    
+Call PrPro(35, "Заполнение листа CODE!")
+    ' копируем доп ПРЕСЕТЫ (блок-чтение; пишем только непустые - как в оригинале)
+    Application.ScreenUpdating = False
+    
+    dsPRE = impSh.Range(impSh.Cells(63, 59), impSh.Cells(5500, 80)).Value
+    For i = 63 To 5500
+    For j = 1 To 22
+    If Len(dsPRE(i - 62, j)) > 0 Then
+    sThisBk.Worksheets("CODE").Cells(i, 58 + j).Value = dsPRE(i - 62, j)
+    End If
+    Next j
+    If (i - 63) Mod 50 = 0 Then Call PrPro((i - 63) / (5500 - 63) * 0.5 * 100 + 35, "Заполнение листа CODE!")
+    Next i
+    sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(63, 95), sThisBk.Worksheets("CODE").Cells(5500, 96)).Value = impSh.Range(impSh.Cells(63, 95), impSh.Cells(5500, 96)).Value
+    
+Call PrPro(85, "Заполнение листа CODE!")
+    ' копируем доп ДУДРы
+    sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(118, 6), sThisBk.Worksheets("CODE").Cells(168, 9)).Value = impSh.Range(impSh.Cells(118, 6), impSh.Cells(168, 9)).Value
+    
+        ' копируем доп УСТАВКИ ФОРМИРОВАНИЯ КОЛОНН
+    dsKOL = impSh.Range(impSh.Cells(7, 328), impSh.Cells(39, 333)).Value
+    For i = 7 To 37 Step 5
+    sThisBk.Worksheets("CODE").Cells(i + 2, 328).Value = dsKOL(i - 4, 1)
+    For j = 328 To 333
+    sThisBk.Worksheets("CODE").Cells(i, j).Value = dsKOL(i - 6, j - 327)
+    Next j
+    Next i
+    
+    
+    ' копируем уровни
+    sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(35, 50), sThisBk.Worksheets("CODE").Cells(54, 58)).Value = impSh.Range(impSh.Cells(35, 50), impSh.Cells(54, 58)).Value
+    sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(35, 75), sThisBk.Worksheets("CODE").Cells(54, 83)).Value = impSh.Range(impSh.Cells(35, 75), impSh.Cells(54, 83)).Value
+    sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(35, 88), sThisBk.Worksheets("CODE").Cells(54, 96)).Value = impSh.Range(impSh.Cells(35, 88), impSh.Cells(54, 96)).Value
+Call PrPro(88, "Заполнение листа CODE!")
+    ' копируем теплообменники
+    sThisBk.Worksheets("CODE").Range("AK67:AO167").ClearContents
+    sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(67, 37), sThisBk.Worksheets("CODE").Cells(167, 41)).Value = impSh.Range(impSh.Cells(67, 37), impSh.Cells(167, 41)).Value
+    ' копируем печи1
+    sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(379, 35), sThisBk.Worksheets("CODE").Cells(416, 46)).Value = impSh.Range(impSh.Cells(379, 35), impSh.Cells(416, 46)).Value
+      ' копируем печи2
+      sThisBk.Worksheets("CODE").Cells(438, 34).Value = impSh.Cells(438, 34).Value
+      dsPECH = impSh.Range(impSh.Cells(452, 34), impSh.Cells(526, 42)).Value
+      For i = 452 To 522 Step 7
+      sThisBk.Worksheets("CODE").Cells(i, 40).Value = dsPECH(i - 451, 7)
+      sThisBk.Worksheets("CODE").Cells(i + 1, 42).Value = dsPECH(i - 450, 9)
+      For j = 34 To 39
+      For i2 = 1 To 4
+      sThisBk.Worksheets("CODE").Cells(i + i2, j).Value = dsPECH(i + i2 - 451, j - 33)
+      Next i2
+      Next j
+      Next i
+          ' копируем доп уровни 1
+    sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(210, 36), sThisBk.Worksheets("CODE").Cells(240, 43)).Value = impSh.Range(impSh.Cells(210, 36), impSh.Cells(240, 43)).Value
+              ' копируем доп уровни 2
+    sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(557, 36), sThisBk.Worksheets("CODE").Cells(669, 43)).Value = impSh.Range(impSh.Cells(557, 36), impSh.Cells(669, 43)).Value
+       ' копируем имена составов групп 24к
+    sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(246, 3), sThisBk.Worksheets("CODE").Cells(285, 13)).Value = impSh.Range(impSh.Cells(246, 3), impSh.Cells(285, 13)).Value
+           ' копируем составы шаблонов
+    sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(6, 260), sThisBk.Worksheets("CODE").Cells(35, 265)).Value = impSh.Range(impSh.Cells(6, 260), impSh.Cells(35, 265)).Value
+    sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(6, 268), sThisBk.Worksheets("CODE").Cells(35, 268)).Value = impSh.Range(impSh.Cells(6, 268), impSh.Cells(35, 268)).Value
+               ' копируем библиотеку компонентов
+    sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(7, 275), sThisBk.Worksheets("CODE").Cells(48, 316)).Value = impSh.Range(impSh.Cells(7, 275), impSh.Cells(48, 316)).Value
+      ' копируем доп армс + out тупики
+    sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(432, 29), sThisBk.Worksheets("CODE").Cells(931, 29)).Value = impSh.Range(impSh.Cells(432, 29), impSh.Cells(931, 29)).Value
+    sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(432, 30), sThisBk.Worksheets("CODE").Cells(931, 30)).Value = impSh.Range(impSh.Cells(432, 30), impSh.Cells(931, 30)).Value
+    sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(432, 32), sThisBk.Worksheets("CODE").Cells(931, 32)).Value = impSh.Range(impSh.Cells(432, 32), impSh.Cells(931, 32)).Value
+Call PrPro(90, "Заполнение листа CODE!")
+    ' копируем компоненты состава
+    sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(21, 72), sThisBk.Worksheets("CODE").Cells(25, 81)).Value = impSh.Range(impSh.Cells(21, 72), impSh.Cells(25, 81)).Value
+Call PrPro(95, "Заполнение листа CODE!")
+    ' копируем конверторы
+    dsKONV = impSh.Range(impSh.Cells(250, 35), impSh.Cells(332, 43)).Value
+    For i = 250 To 327 Step 7
+    sThisBk.Worksheets("CODE").Cells(i, 35).Value = dsKONV(i - 249, 1)
+    sThisBk.Worksheets("CODE").Cells(i, 40).Value = dsKONV(i - 249, 6)
+    For j = 37 To 43
+    sThisBk.Worksheets("CODE").Cells(i + 3, j).Value = dsKONV(i - 246, j - 34)
+    sThisBk.Worksheets("CODE").Cells(i + 4, j).Value = dsKONV(i - 245, j - 34)
+    sThisBk.Worksheets("CODE").Cells(i + 5, j).Value = dsKONV(i - 244, j - 34)
+    Next j
+    Next i
+Call PrPro(98, "Заполнение листа CODE!")
+    ' копируем уставаки гидравлик и расходов
+    sThisBk.Worksheets("CODE").Cells(8, 67).Value = impSh.Cells(8, 67).Value
+    sThisBk.Worksheets("CODE").Cells(13, 67).Value = impSh.Cells(13, 67).Value
+    sThisBk.Worksheets("CODE").Cells(14, 70).Value = impSh.Cells(14, 70).Value
+    sThisBk.Worksheets("CODE").Cells(14, 71).Value = impSh.Cells(14, 71).Value
+    sThisBk.Worksheets("CODE").Cells(30, 51).Value = impSh.Cells(30, 51).Value
+    'sThisBk.Worksheets("CODE").Cells(5, 58).Value = impSh.Cells(5, 58).Value
+    sThisBk.Worksheets("CODE").Cells(26, 57).Value = impSh.Cells(26, 57).Value
+Call PrPro(100, "Заполнение листа CODE!")
+    If IsNumeric(impSh.Cells(25, 59).Value) = True Then
+    If Cells(25, 59).Value > 0 Then sThisBk.Worksheets("CODE").Cells(25, 59).Value = impSh.Cells(25, 59).Value
+    End If
+    
+   Call PrPro(0, "Импорт библиотеки!")
+
+
+
+
+' копируем клапана и диаметры (конец ищем блоком по столбцу 57 источника)
+dsARMV = impSh.Range(impSh.Cells(63, 57), impSh.Cells(5500, 57)).Value
+II0 = 63
+Do
+II0 = II0 + 1
+Loop While Len(dsARMV(II0 - 62, 1)) > 1 And II0 < 5500
+If Len(dsARMV(II0 - 62, 1)) > 1 Then II0 = 5500
+dsARM_end = II0 - 1
+II0 = 63
+Application.ScreenUpdating = False
+If dsARM_end >= 63 Then
+sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(63, 57), sThisBk.Worksheets("CODE").Cells(dsARM_end, 58)).Value = impSh.Range(impSh.Cells(63, 57), impSh.Cells(dsARM_end, 58)).Value
+sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(63, 279), sThisBk.Worksheets("CODE").Cells(dsARM_end, 279)).Value = impSh.Range(impSh.Cells(63, 57), impSh.Cells(dsARM_end, 57)).Value
+sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(63, 280), sThisBk.Worksheets("CODE").Cells(dsARM_end, 282)).Value = impSh.Range(impSh.Cells(63, 280), impSh.Cells(dsARM_end, 282)).Value
+For II0 = 63 To dsARM_end
+sThisBk.Worksheets("CODE").Cells(II0, 57).Interior.Color = impSh.Cells(II0, 57).Interior.Color
+Call PrPro((II0 - 63) * 100 / (2.5 * wbBk.Worksheets.Count), "Копируем арматуры в библиотеке!")
+Next II0
+End If
+
+ Call PrPro(0, "Копируем источники в библиотеке!")
+' копируем источники в библиотеке и пресеты (значения блоком, нормировка в памяти)
+dsIST = impSh.Range(impSh.Cells(63, 54), impSh.Cells(5500, 65)).Value
+dsIST2 = impSh.Range(impSh.Cells(63, 329), impSh.Cells(5500, 352)).Value
+II0 = 63
+Do
+II0 = II0 + 1
+Loop While Len(dsIST(II0 - 62, 1)) > 1 And II0 < 5500
+If Len(dsIST(II0 - 62, 1)) > 1 Then II0 = 5500
+dsIST_end = II0 - 1
+II0 = 63
+Application.ScreenUpdating = False
+If dsIST_end >= 63 Then
+ReDim dsui(1 To dsIST_end - 62, 1 To 7)
+ReDim dsui2(1 To dsIST_end - 62, 1 To 24)
+For II0 = 63 To dsIST_end
+sumu = 0
+sumu2 = 0
+For j2 = 60 To 65
+dsui(II0 - 62, j2 - 59) = Abs(CSng(dsIST(II0 - 62, j2 - 53)))
+sumu = dsui(II0 - 62, j2 - 59) + sumu
+Next j2
+For j2 = 329 To 352
+dsui2(II0 - 62, j2 - 328) = Abs(CSng(dsIST2(II0 - 62, j2 - 328)))
+sumu2 = dsui2(II0 - 62, j2 - 328) + sumu2 ' составы источников 24к
+Next j2
+If sumu = 0 Then sumu = 0.0000000000001
+If sumu2 = 0 Then sumu2 = 0.0000000000001
+dsui(II0 - 62, 1) = 0 / sumu ' столбец 59 - как в оригинале (ui(0) всегда 0)
+For j2 = 2 To 7
+dsui(II0 - 62, j2) = dsui(II0 - 62, j2) / sumu
+Next j2
+For j2 = 1 To 24
+dsui2(II0 - 62, j2) = dsui2(II0 - 62, j2) / sumu2
+Next j2
+Call PrPro((II0 - 63) / (wbBk.Worksheets.Count * 1.25 - 63 - 2 + 0.0001) * 100, "Копируем источники в библиотеке!")
+Next II0
+sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(63, 54), sThisBk.Worksheets("CODE").Cells(dsIST_end, 56)).Value = impSh.Range(impSh.Cells(63, 54), impSh.Cells(dsIST_end, 56)).Value
+sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(63, 328), sThisBk.Worksheets("CODE").Cells(dsIST_end, 328)).Value = impSh.Range(impSh.Cells(63, 54), impSh.Cells(dsIST_end, 54)).Value
+sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(63, 59), sThisBk.Worksheets("CODE").Cells(dsIST_end, 65)).Value = dsui
+sThisBk.Worksheets("CODE").Range(sThisBk.Worksheets("CODE").Cells(63, 329), sThisBk.Worksheets("CODE").Cells(dsIST_end, 352)).Value = dsui2
+For II0 = 63 To dsIST_end
+sThisBk.Worksheets("CODE").Cells(II0, 54).Interior.Color = impSh.Cells(II0, 54).Interior.Color
+Next II0
+End If
+
+  Call PrPro(5, "Импорт связей с другой книги!")
+End If
+End If
+
+
+        If impSh.Name = "EX" Then
+        aa = 0
+                
+                End If
+        
+        'проверяем нет ли этого листа в старой книге, если есть то пропускаем
+        If answer = vbYes Then
+        Else
+        
+        
+        For i = 3 To aa_old
+        If sh_old(i) = impSh.Name Then aa = 0
+        Next i
+        End If
+        
+        If aa = 1 Then
+        bbb = wbBk.Worksheets.Count
+        
+        If tip_ex = 1 Then
+        
+                'impSh.Copy After:=sThisBk.Sheets(sThisBk.Worksheets.Count)
+                'Worksheets("EX").Copy After:=Worksheets(Worksheets.Count)
+                Application.ScreenUpdating = False
+                sThisBk.Worksheets("EX").Copy After:=sThisBk.Sheets(sThisBk.Worksheets.Count)
+              ' If Worksheets("CODE").Cells(5, 58).Value > 0 Then Application.Wait (Now + 0.000005 * (1 + Worksheets("CODE").Cells(5, 58).Value))
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Name = impSh.Name
+                  ou_101 = 1
+                If ou_101 = 1 Then
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Tab.ColorIndex = impSh.Tab.ColorIndex
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(4, 4).Value = impSh.Cells(4, 4).Value
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(123, 1).Value = impSh.Cells(123, 1).Value
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(4, 3).Value = impSh.Cells(4, 3).Value
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(7, 4).Value = impSh.Cells(7, 4).Value
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(9, 4).Value = impSh.Cells(9, 4).Value
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(9, 3).Value = impSh.Cells(9, 3).Value
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(13, 3).Value = impSh.Cells(13, 3).Value
+                If Len(impSh.Cells(13, 3).Value) < 1 Then sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(13, 3).Value = 0
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(11, 4).Value = impSh.Cells(11, 4).Value
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(11, 3).Value = impSh.Cells(11, 3).Value
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(16, 3).Value = impSh.Cells(16, 3).Value
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(17, 3).Value = impSh.Cells(17, 3).Value
+                End If
+                a = wbBk.Name
+                'wbBk.Activate
+                impSh.Activate
+                If ou_101 = 1 Then
+                Dim rSource As Range 'Source Range
+                For j = 5 To 131 Step 7 '''''''''''''''''''''''''''    КОПИРУЕМ ДАННЫЕ ТАБЛИЦ НА ЛИСТЕ ИСТОЧНИКА
+                If Len(impSh.Cells(j, 7).Value) > 1 Then
+                impSh.Activate
+                Set rSource = wbBk.Worksheets(sThisBk.Worksheets.Count).Range(Cells(j, 9), Cells(j + 3, 28))
+                sThisBk.Activate
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Range(sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j, 9), sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 3, 28)).Value = rSource.Value
+                F0 = sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 3, 10).Value
+                If IsNumeric(F0) = False Then
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 3, 10).Value = 50
+                End If
+                If F0 = 0 Then sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 3, 10).Value = 100
+                F0 = sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 3, 11).Value
+                If IsNumeric(F0) = False Then
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 3, 11).Value = 2.3
+                End If
+                If F0 = 0 Then sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 3, 11).Value = 1.5
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 6, 5).Value = impSh.Cells(j + 6, 5).Value
+                If sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 6, 5).Value = 2 Then
+                Else
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 6, 5).Value = 1
+                End If
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 4, 5).Value = impSh.Cells(j + 4, 5).Value
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j, 7).Value = impSh.Cells(j, 7).Value
+                 sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 6, 5).Value = impSh.Cells(j + 6, 5).Value
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 3, 7).Value = impSh.Cells(j + 3, 7).Value
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 4, 7).Value = impSh.Cells(j + 4, 7).Value
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 3, 17).Value = impSh.Cells(j + 3, 17).Value
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 3, 20).Value = impSh.Cells(j + 3, 20).Value
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 3, 26).Value = impSh.Cells(j + 3, 26).Value
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 3, 28).Value = impSh.Cells(j + 3, 28).Value
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 4, 26).Value = impSh.Cells(j + 4, 26).Value
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 5, 7).Value = 0
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 5, 7).Value = impSh.Cells(j + 5, 7).Value ' ВЫВОД ФАЗЫ
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 6, 7).Value = impSh.Cells(j + 6, 7).Value  ' % уровня допустимого для выхода потока
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j - 1, 6).Value = impSh.Cells(j - 1, 6).Value
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 3, 12).Value = impSh.Cells(j + 3, 12).Value
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 3, 7).Font.Color = impSh.Cells(j + 3, 7).Font.Color  ' цвет источника
+                'If impSh.Cells(j + 5, 26).Value = "" Then sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 5, 26).Value = 0
+                If j = 5 Then
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(1, 1).Value = impSh.Cells(1, 1).Value
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(4, 4).Value = impSh.Cells(4, 4).Value
+                End If
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Range("A1").Select
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Activate
+                Application.GoTo Range("A1"), True
+                End If
+                Next j
+                End If
+                Else: End If
+                 'Call PrPro(sac / (wbBk.Worksheets.Count - 2) * 100, "Импорт связей с другой книги! Лист " + impSh.Cells(4, 4).Value)
+                'Call PrPro(sac / (wbBk.Worksheets.Count - 2) * 100, "Импорт связей с другой книги! Лист " + impSh.Cells(1, 1).Value)
+                If IsNumeric(impSh.Cells(1, 1).Value) = False Then Call PrPro(sac / (wbBk.Worksheets.Count - 2) * 100, "Импорт связей с другой книги! Лист " + impSh.Cells(1, 1).Value)
+        End If
+        Next impSh
+        
+1812:
+        If tip_ex = 1 Then
+wbBk.Worksheets("CODE").Cells(5, 58).Value = a558_1
+sThisBk.Worksheets("CODE").Cells(5, 58).Value = a558_2
+        wbBk.Close SaveChanges:=False
+        End If
+ 
+        If tip_ex = 2 Then
+        
+        ' создаем txt файл с архивом (в оптимизированной версии архив НЕ пишется на диск - данные уже в памяти, итог тот же)
+ 
+idetif = "_DATA_TXT001"
+kl = wbBk.FullName
+kl1 = wbBk.Name
+k12 = Replace(kl1, ".xlsm", "")
+k12 = Replace(k12, ".xlsb", "")
+k12 = Replace(k12, "Utilite_1", "")
+fn_SHORT = k12
+k12 = Left(k12, Len(k12) - 12) + ")"
+kl2 = k12 + "_" + idetif
+kl2 = Replace(kl2, " ", "")
+kl2 = Replace(kl2, "GDC", "_")
+DIR_my = Replace(kl, kl1, "")
+kl0 = Replace(kl, kl1, "") + kl2
+s1 = Day(Date)
+S10 = Replace(Str(s1), " ", "")
+If s1 < 10 Then S10 = Replace("0" + Str(s1), " ", "")
+s2 = Month(Date)
+S20 = Replace(Str(s2), " ", "")
+If s2 < 10 Then S20 = Replace("0" + Str(s2), " ", "")
+s3 = Year(Date)
+S30 = Replace(Str(s3), " ", "")
+If s3 < 10 Then S30 = Replace("0" + Str(s3), " ", "")
+s4 = Hour(Time)
+S40 = Replace(Str(s4), " ", "")
+If s4 < 10 Then S40 = Replace("0" + Str(s4), " ", "")
+s5 = Minute(Time)
+S50 = Replace(Str(s5), " ", "")
+If s5 < 10 Then S50 = Replace("0" + Str(s5), " ", "")
+kl0 = kl0 + "_[" + S10 + "." + S20 + "." + S30 + " " + S40 + ".." + S50 + "] "
+FOLD_my = Replace(kl0, DIR_my, "")
+IMA_f001 = kl0 + ".txt"
+fn = IMA_f001
+
+aa = wbBk.Worksheets.Count
+If aa < 3 Then Exit Sub
+
+ReDim data102(aa, 137, 28) As String
+For i = 3 To aa
+ dsARC = wbBk.Worksheets(i).Range(wbBk.Worksheets(i).Cells(4, 5), wbBk.Worksheets(i).Cells(137, 28)).Value
+ data102(i, 0, 1) = wbBk.Worksheets(i).Tab.ColorIndex
+ data102(i, 0, 2) = wbBk.Worksheets(i).Name
+                data102(i, 4, 4) = wbBk.Worksheets(i).Cells(4, 4).Value
+                data102(i, 123, 1) = wbBk.Worksheets(i).Cells(123, 1).Value
+                data102(i, 4, 3) = wbBk.Worksheets(i).Cells(4, 3).Value
+                data102(i, 7, 4) = wbBk.Worksheets(i).Cells(7, 4).Value
+                data102(i, 9, 4) = wbBk.Worksheets(i).Cells(9, 4).Value
+                data102(i, 9, 3) = wbBk.Worksheets(i).Cells(9, 3).Value
+                data102(i, 13, 3) = wbBk.Worksheets(i).Cells(13, 3).Value
+                data102(i, 11, 4) = wbBk.Worksheets(i).Cells(11, 4).Value
+                data102(i, 11, 3) = wbBk.Worksheets(i).Cells(11, 3).Value
+                data102(i, 16, 3) = wbBk.Worksheets(i).Cells(16, 3).Value
+                data102(i, 17, 3) = wbBk.Worksheets(i).Cells(17, 3).Value
+                For j = 5 To 131 Step 7 ' КОПИРУЕМ ДАННЫЕ ТАБЛИЦ НА ЛИСТЕ ИСТОЧНИКА
+                If Len(dsARC(j - 3, 3)) > 1 Then
+For j2 = 9 To 28
+For j3 = 1 To 4
+data102(i, j - 1 + j3, j2) = dsARC(j - 1 + j3 - 3, j2 - 4)
+Next j3
+Next j2
+                data102(i, j + 6, 5) = dsARC(j + 3, 1)
+                If data102(i, j + 6, 5) = 2 Then
+                Else
+                data102(i, j + 6, 5) = 1
+                End If
+                data102(i, j + 4, 5) = dsARC(j + 1, 1)
+                data102(i, j, 7) = dsARC(j - 3, 3)
+                data102(i, j + 6, 5) = dsARC(j + 3, 1)
+                data102(i, j + 3, 7) = dsARC(j, 3)
+                data102(i, j + 4, 7) = dsARC(j + 1, 3)
+                data102(i, j + 3, 17) = dsARC(j, 13)
+                data102(i, j + 3, 20) = dsARC(j, 16)
+                data102(i, j + 3, 26) = dsARC(j, 22)
+                data102(i, j + 3, 28) = dsARC(j, 24)
+                data102(i, j + 4, 26) = dsARC(j + 1, 22)
+                data102(i, j + 5, 7) = dsARC(j + 2, 3) ' ВЫВОД ФАЗЫ
+                data102(i, j + 6, 7) = dsARC(j + 3, 3) ' % уровня допустимого для выхода потока
+                data102(i, j - 1, 6) = dsARC(j - 4, 2)
+                data102(i, j + 3, 12) = dsARC(j, 8)
+                'data102(i, j + 3, 7) = Worksheets(i).Cells(j + 3, 7).Font.Color  ' цвет источника
+                If j = 5 Then
+                data102(i, 1, 1) = wbBk.Worksheets(i).Cells(1, 1).Value
+                data102(i, 4, 4) = wbBk.Worksheets(i).Cells(4, 4).Value
+                End If
+                End If
+                Next j
+Next i
+
+wbBk.Worksheets("CODE").Cells(5, 58).Value = a558_1
+sThisBk.Worksheets("CODE").Cells(5, 58).Value = a558_2
+wbBk.Close SaveChanges:=False
+
+aa11 = data102(3, 8, 7)
+
+' архив обрабатывается в памяти: значения идентичны файлу (пробелы убирались при разборе строки)
+Dim data101(150, 50) As String
+For i1 = 3 To aa
+data101(0, 1) = data102(i1, 0, 1)
+data101(0, 2) = Replace(data102(i1, 0, 2), " ", "")
+For i2 = 1 To 137
+For i3 = 1 To 28
+data101(i2, i3) = Replace(data102(i1, i2, i3), " ", "")
+Next i3
+Next i2
+
+                  Application.ScreenUpdating = False
+                sThisBk.Worksheets("EX").Copy After:=sThisBk.Sheets(sThisBk.Worksheets.Count)
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Name = data101(0, 2)
+                    sThisBk.Worksheets(sThisBk.Worksheets.Count).Tab.ColorIndex = data101(0, 1)
+                    sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(4, 4).Value = data101(4, 4)
+                    sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(123, 1).Value = data101(123, 1)
+                    sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(4, 3).Value = data101(4, 3)
+                    sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(7, 4).Value = data101(7, 4)
+                    sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(9, 4).Value = data101(9, 4)
+                    sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(9, 3).Value = data101(9, 3)
+                    sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(13, 3).Value = data101(13, 3)
+                    If Len(data101(13, 3)) < 1 Then sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(13, 3).Value = 0
+                    sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(11, 4).Value = data101(11, 4)
+                    sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(11, 3).Value = data101(11, 3)
+                    sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(16, 3).Value = data101(16, 3)
+                    sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(17, 3).Value = data101(17, 3)
+                For j = 5 To 131 Step 7 ' КОПИРУЕМ ДАННЫЕ ТАБЛИЦ НА ЛИСТЕ ИСТОЧНИКА
+                If Len(data101(j, 7)) > 1 Then
+For j2 = 9 To 28
+For j3 = 1 To 4
+data101(j - 1 + j3, j2) = Replace(data101(j - 1 + j3, j2), ",", ".")
+If Val(data101(j - 1 + j3, j2)) = 0 Then
+sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j - 1 + j3, j2).Value = data101(j - 1 + j3, j2)
+Else
+sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j - 1 + j3, j2).Value = Val(data101(j - 1 + j3, j2))
+End If
+Next j3
+Next j2
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 6, 5).Value = data101(j + 6, 5)
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 4, 5).Value = data101(j + 4, 5)
+                 sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j, 7).Value = data101(j, 7)
+                 sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 6, 5).Value = data101(j + 6, 5)
+                 sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 3, 7).Value = data101(j + 3, 7)
+                 sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 4, 7).Value = data101(j + 4, 7)
+                 sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 3, 17).Value = data101(j + 3, 17)
+                 sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 3, 20).Value = data101(j + 3, 20)
+                 sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 3, 26).Value = data101(j + 3, 26)
+                 sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 3, 28).Value = data101(j + 3, 28)
+                 sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 4, 26).Value = data101(j + 4, 26)
+                 sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 5, 7).Value = data101(j + 5, 7)  ' ВЫВОД ФАЗЫ
+                 sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 6, 7).Value = data101(j + 6, 7) ' % уровня допустимого для выхода потока
+                 sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j - 1, 6).Value = data101(j - 1, 6)
+                 sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(j + 3, 12).Value = data101(j + 3, 12)
+                If j = 5 Then
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(1, 1).Value = data101(1, 1)
+                sThisBk.Worksheets(sThisBk.Worksheets.Count).Cells(4, 4).Value = data101(4, 4)
+                End If
+                End If
+                Next j
+                Call PrPro((sThisBk.Worksheets.Count - 2) / (bbb - 2) * 100, "Импорт связей с выделенного архива! Лист " + Str(sThisBk.Worksheets.Count - 2))
+                If Worksheets("CODE").Cells(5, 58).Value > 0 Then Application.Wait (Now + 0.000005 * (1 + Worksheets("CODE").Cells(5, 58).Value))
+Next i1
+        End If
+        
+    End If
+    
+    
+    Application.DisplayAlerts = True
+Application.ScreenUpdating = False
+    If GG = 100 Then
+
+aa = Worksheets.Count
+For i = 1 To aa
+Application.ScreenUpdating = False
+bb = ActiveWorkbook.Sheets(i).Name
+If Not bb = "CODE" Then
+If Not bb = "EX" Then
+On Error Resume Next
+Call PrPro((i - 2) / (wbBk.Worksheets.Count - 2) * 100, "Подготовка формата листов!")
+Worksheets(i).Shapes("Button 21").Delete
+Worksheets(i).Shapes("Button 22").Delete
+Worksheets(i).Shapes("Button 23").Delete
+Worksheets(i).Shapes("Button 24").Delete
+Worksheets("EX").Range("A8:D16").Copy _
+Destination:=Worksheets(i).Range("A8:D16")
+If Not Worksheets(i).Cells(8, 28).Interior.Color = Worksheets("EX").Cells(8, 28).Interior.Color Then
+Worksheets("EX").Cells(8, 28).Copy
+Worksheets(i).Activate
+For o = 8 To 71 Step 7
+aaa = Worksheets(i).Cells(o, 28).Value
+Worksheets(i).Paste Cells(o, 28)
+Worksheets(i).Cells(o, 28).Value = aaa
+Worksheets(i).Cells(o, 29) = Worksheets("EX").Cells(8, 29)
+Next o
+End If
+Worksheets(i).Cells(2, 8) = Worksheets("EX").Cells(2, 8)
+End If
+End If
+Worksheets(i).Cells(1, 1).SetFocus
+Next i
+
+      End If
+
+aa = Worksheets.Count
+For i = 9 To 18
+If i < aa - 2 Then Worksheets("CODE").Cells(i, 12).Value = ActiveWorkbook.Sheets(i + 2).Name
+If i + 3 > aa Then i = 18
+Next i
+
+Application.ScreenUpdating = False
+'Call Ras_C временно вырубил расчёт при переезде
+Application.ScreenUpdating = True
+Unload ufProgress
+Worksheets("CODE").Activate
+ub_time = ((Day(Time) * 24 + Hour(Time)) * 60 + Minute(Time)) * 60 + Second(Time)
+
+If Worksheets("CODE").Cells(1, 1).Value = 0 Then
+Else
+If smart_sbor = 1 Then MsgBox ("ВЫПОЛНЕНО!" + Chr(13) + Chr(10) + " На импорт затрачено " + Str(ub_time - ua_time) + " сек.")
+End If
+    smart_sbor = 1
+    Call SH_count
+    Call st_1
+    MsgBox ("Перенос листов завершен!")
+End Sub
+
+' =====================================================================
+' Batch-копирование прямоугольного блока
+' =====================================================================
+Private Sub CopyBlockValue(srcWs As Worksheet, dstWs As Worksheet, r1 As Long, c1 As Long, r2 As Long, c2 As Long)
+    If r2 < r1 Or c2 < c1 Then Exit Sub
+    Dim v As Variant
+    v = srcWs.Range(srcWs.Cells(r1, c1), srcWs.Cells(r2, c2)).Value
+    dstWs.Range(dstWs.Cells(r1, c1), dstWs.Cells(r2, c2)).Value = v
+End Sub
+
+
+' =====================================================================
+' Специальный блок 63..r2 ? 59..80 (с условием Len>0) + 95,96 (без условия)
+' =====================================================================
+Private Sub CopyBigBlock3(srcWs As Worksheet, dstWs As Worksheet, r1 As Long, r2 As Long)
+    Dim srcMain As Variant, dstMain As Variant
+    srcMain = srcWs.Range(srcWs.Cells(r1, 59), srcWs.Cells(r2, 80)).Value
+    dstMain = dstWs.Range(dstWs.Cells(r1, 59), dstWs.Cells(r2, 80)).Value
+
+    Dim i As Long, j As Long
+    Dim nR As Long, nC As Long
+    nR = r2 - r1 + 1
+    nC = 22
+
+    For i = 1 To nR
+        For j = 1 To nC
+            If Len(srcMain(i, j)) > 0 Then dstMain(i, j) = srcMain(i, j)
+        Next j
+        If i Mod 1000 = 0 Then
+            Call PrPro_s3((i - 63) / (5500 - 63) * 0.5 * 100 + 35, "Заполнение листа CODE!")
+        End If
+    Next i
+
+    dstWs.Range(dstWs.Cells(r1, 59), dstWs.Cells(r2, 80)).Value = dstMain
+
+    Dim src95 As Variant, src96 As Variant
+    src95 = srcWs.Range(srcWs.Cells(r1, 95), srcWs.Cells(r2, 95)).Value
+    src96 = srcWs.Range(srcWs.Cells(r1, 96), srcWs.Cells(r2, 96)).Value
+    dstWs.Range(dstWs.Cells(r1, 95), dstWs.Cells(r2, 95)).Value = src95
+    dstWs.Range(dstWs.Cells(r1, 96), dstWs.Cells(r2, 96)).Value = src96
+End Sub
+
+
+' =====================================================================
+' «Арматуры»: 57/цвет57/58/279/280/281/282 — пакетно
+' =====================================================================
+Private Sub ImportArmLoop(srcWs As Worksheet, dstWs As Worksheet)
+    Dim iEnd As Long
+    iEnd = 63
+    Do
+        If Len(srcWs.Cells(iEnd, 57).Value) <= 1 Then Exit Do
+        iEnd = iEnd + 1
+    Loop
+    iEnd = iEnd - 1
+    If iEnd < 63 Then Exit Sub
+
+    Dim src57 As Variant, src58 As Variant
+    Dim src280 As Variant, src281 As Variant, src282 As Variant
+
+    src57 = srcWs.Range(srcWs.Cells(63, 57), srcWs.Cells(iEnd, 57)).Value
+    src58 = srcWs.Range(srcWs.Cells(63, 58), srcWs.Cells(iEnd, 58)).Value
+    src280 = srcWs.Range(srcWs.Cells(63, 280), srcWs.Cells(iEnd, 280)).Value
+    src281 = srcWs.Range(srcWs.Cells(63, 281), srcWs.Cells(iEnd, 281)).Value
+    src282 = srcWs.Range(srcWs.Cells(63, 282), srcWs.Cells(iEnd, 282)).Value
+
+    dstWs.Range(dstWs.Cells(63, 57), dstWs.Cells(iEnd, 57)).Value = src57
+    dstWs.Range(dstWs.Cells(63, 279), dstWs.Cells(iEnd, 279)).Value = src57
+    dstWs.Range(dstWs.Cells(63, 58), dstWs.Cells(iEnd, 58)).Value = src58
+    dstWs.Range(dstWs.Cells(63, 280), dstWs.Cells(iEnd, 280)).Value = src280
+    dstWs.Range(dstWs.Cells(63, 281), dstWs.Cells(iEnd, 281)).Value = src281
+    dstWs.Range(dstWs.Cells(63, 282), dstWs.Cells(iEnd, 282)).Value = src282
+
+    Dim i As Long
+    For i = 63 To iEnd
+        dstWs.Cells(i, 57).Interior.Color = srcWs.Cells(i, 57).Interior.Color
+    Next i
+End Sub
+
+
+' =====================================================================
+' «Источники»: 54/цвет54/55/56/328 + нормализация 59-65 и 329-352
+' (расчёт в Single, как в оригинале — для побайтного совпадения)
+' =====================================================================
+Private Sub ImportSrcLoop(srcWs As Worksheet, dstWs As Worksheet)
+    Dim iEnd As Long
+    iEnd = 63
+    Do
+        If Len(srcWs.Cells(iEnd, 54).Value) <= 1 Then Exit Do
+        iEnd = iEnd + 1
+    Loop
+    iEnd = iEnd - 1
+    If iEnd < 63 Then Exit Sub
+
+    Dim nRows As Long
+    nRows = iEnd - 63 + 1
+
+    Dim src54 As Variant, src55 As Variant, src56 As Variant
+    Dim src60_65 As Variant, src329_352 As Variant
+
+    src54 = srcWs.Range(srcWs.Cells(63, 54), srcWs.Cells(iEnd, 54)).Value
+    src55 = srcWs.Range(srcWs.Cells(63, 55), srcWs.Cells(iEnd, 55)).Value
+    src56 = srcWs.Range(srcWs.Cells(63, 56), srcWs.Cells(iEnd, 56)).Value
+    src60_65 = srcWs.Range(srcWs.Cells(63, 60), srcWs.Cells(iEnd, 65)).Value
+    src329_352 = srcWs.Range(srcWs.Cells(63, 329), srcWs.Cells(iEnd, 352)).Value
+
+    Dim out59_65() As Single
+    Dim out329_352() As Single
+    ReDim out59_65(1 To nRows, 1 To 7)
+    ReDim out329_352(1 To nRows, 1 To 24)
+
+    Dim i As Long, jj As Long
+    Dim sumu As Single, sumu2 As Single
+    Dim valArr(1 To 6) As Single
+
+    For i = 1 To nRows
+        sumu = 0
+        sumu2 = 0
+
+        For jj = 1 To 6
+            valArr(jj) = Abs(src60_65(i, jj))
+            sumu = valArr(jj) + sumu
+        Next jj
+        If sumu = 0 Then sumu = 0.0000000000001
+
+        ' out59 всегда 0 (ui(0) = 0 в оригинале)
+        out59_65(i, 1) = 0
+        For jj = 1 To 6
+            out59_65(i, jj + 1) = valArr(jj) / sumu
+        Next jj
+
+        For jj = 1 To 24
+            sumu2 = Abs(src329_352(i, jj)) + sumu2
+        Next jj
+        If sumu2 = 0 Then sumu2 = 0.0000000000001
+
+        For jj = 1 To 24
+            out329_352(i, jj) = Abs(src329_352(i, jj)) / sumu2
+        Next jj
+    Next i
+
+    dstWs.Range(dstWs.Cells(63, 54), dstWs.Cells(iEnd, 54)).Value = src54
+    dstWs.Range(dstWs.Cells(63, 55), dstWs.Cells(iEnd, 55)).Value = src55
+    dstWs.Range(dstWs.Cells(63, 56), dstWs.Cells(iEnd, 56)).Value = src56
+    dstWs.Range(dstWs.Cells(63, 328), dstWs.Cells(iEnd, 328)).Value = src54
+    dstWs.Range(dstWs.Cells(63, 59), dstWs.Cells(iEnd, 65)).Value = out59_65
+    dstWs.Range(dstWs.Cells(63, 329), dstWs.Cells(iEnd, 352)).Value = out329_352
+
+    For i = 63 To iEnd
+        dstWs.Cells(i, 54).Interior.Color = srcWs.Cells(i, 54).Interior.Color
+    Next i
+End Sub
+
+
+' =====================================================================
+' PrPro_s3 — троттлинг UI (~30 fps). Совместим с исходным PrPro
+' =====================================================================
+Sub PrPro_s3(progr As Double, procName As String)
+    Static lastT As Single
+    If progr > 100 Then progr = 100
+    If progr < 0 Then progr = 0
+    If progr < 100 And (Timer - lastT) < 0.03 Then Exit Sub
+    lastT = Timer
+    ufProgress.Label3.Caption = ">>> " + procName
+    ufProgress.Label2.Width = 0.01 + progr / 100 * ufProgress.FrameProgress.Width
+    ufProgress.Label1.Caption = Str(Format(progr * 100, 0#) / 100) + "%"
+    If InStr(ufProgress.Label1.Caption, ".") = 0 Then ufProgress.Label1.Caption = Replace(ufProgress.Label1.Caption, "%", ".0%")
+    If InStr(ufProgress.Label1.Caption, ".") > 0 Then
+        aa1 = Right(ufProgress.Label1.Caption, Len(ufProgress.Label1.Caption) - InStr(ufProgress.Label1.Caption, ".") + 1)
+        If Len(aa1) < 4 Then
+            ufProgress.Label1.Caption = Replace(ufProgress.Label1.Caption, "%", "0%")
+        End If
+    End If
+    DoEvents
+End Sub
+' =====================================================================
+' PrPro_s2 — троттлинг UI (~30 fps). Сигнатура и результат идентичны PrPro
+' =====================================================================
+Sub PrPro_s2(progr As Double, procName As String)
+    Static lastT As Single
+    If progr > 100 Then progr = 100
+    If progr < 0 Then progr = 0
+    If progr < 100 And (Timer - lastT) < 0.03 Then Exit Sub
+    lastT = Timer
+    ufProgress.Label3.Caption = ">>> " + procName
+    ufProgress.Label2.Width = 0.01 + progr / 100 * ufProgress.FrameProgress.Width
+    ufProgress.Label1.Caption = Str(Format(progr * 100, 0#) / 100) + "%"
+    If InStr(ufProgress.Label1.Caption, ".") = 0 Then ufProgress.Label1.Caption = Replace(ufProgress.Label1.Caption, "%", ".0%")
+    If InStr(ufProgress.Label1.Caption, ".") > 0 Then
+        aa1 = Right(ufProgress.Label1.Caption, Len(ufProgress.Label1.Caption) - InStr(ufProgress.Label1.Caption, ".") + 1)
+        If Len(aa1) < 4 Then
+            ufProgress.Label1.Caption = Replace(ufProgress.Label1.Caption, "%", "0%")
+        End If
+    End If
+    DoEvents
+End Sub
+

@@ -1,0 +1,1803 @@
+'============================================================
+' ============================================================================
+'  CG4_Convert v3 - К3 (20.11.2026): м2 -> м4+LH1 (реформа гашений + снятие гейта XX0[51])
+'  База: v2n (= v2m + SZ по ISTO_p, вход-стражи по узлам; далее v2j, v2k).
+'  НОВОЕ В v3 (20.11, решение владельца: CG4 - тестовый образец, править можно):
+'  1) A3: гейты "if (XX0[51] < 1)" сняты ПОЛНОСТЬЮ (4 места: сборка CG4-B в C# и pas,
+'     решатель CG4-S в C# и pas). Сборка выполняется для КАЖДОГО TUBE-узла, решатель -
+'     на КАЖДОМ скане (раньше решатель не выполнялся ни разу - вырождение м4 в м2).
+'     Условие живости узла NGFix внутри сборки сохранено. CG4_CloseGate не вызывается.
+'  2) A1-зависимость: клампы решателя "NGPmax-2*e27 / NGPmin+2*e27" заменены на честные
+'     клампы по границам (NGPmax/NGPmin копируются из pmax/pmin узлов).
+'  3) РЕФОРМА ГАШЕНИЙ (синхронно с LH1 v21): стражи входа CG4-B/GuardIn/GuardTail -
+'     last-good из зеркала ISTO_p -> крайний 100; хвост - зеркало НЕ обновляется бредом;
+'     диапазоновая ветка LIM_P_min..LIM_P_max (активна при LIM_P_max>0); alarm kerr -795..-798.
+
+'  НОВОЕ В v2n (19.11 22:4x, приёмка прогона v2m на юнитах 13.11 SPLIT):
+'  1) ГЛАВНЫЙ ФИКС: SZ брался из ПЕРВОЙ array-строки с ISTO_p ИЛИ XX0 - в базовом юните
+'     _000 это XX0: array[1..200] - SZ=200 вместо 435. Следствия: (а) декларации
+'     NaN_t/NaN_in объявлялись array[1..200]; (б) хвостовые стражи (проверка узел<=SZ)
+'     обрезались на узле 200: вставлено 402 из 870 (main 239/406, _1 163/464, _2 0);
+'     (в) вход-стражи НЕ проверялись и писали NaN_in[curN] для узлов до 434 - ЗА ГРАНИЦЕЙ
+'     массива (порча памяти в паскале, без range-checking). Теперь SZ берётся только
+'     из ISTO_p-массива (435, иначе fallback chi+1), вход-страж проверяет узел<=SZ.
+'  2) kerr-маяки проверены на этом прогоне: все м2-керры сохранены (0 потерь), порядок
+'     per-proc 1:1; м4 добавил свои керры (5xx в main; дубли м2-номеров в _1 - вставки м4).
+'  Прочее - как в v2m.
+
+'  НОВОЕ В v2m (19.11, дефект первого прогона м4 юнитов 13.11):
+' ФИКС ИЗЪЯТИЯ end: дефицит begin/end считался только по зоне «математика»
+' (mathStart..K_v), а закрывающий end м2-петли (строка «end;  kerr:= ...» после
+' USc_r) лежит в ХВОСТЕ - begin оставался без пары, юниты не компилировались.
+' Эмуляция по эталонному м2+LH1: 269 блоков с дефицитом math..Kv>0, у всех
+' полная зона math..конец блока балансна - РЕАЛЬНЫХ орфанов нет. Теперь
+' дефицит считается по mathStart..bEnd; end м2-петли сохраняется.
+' Проверка после конвертации: количество строк «end;  kerr:=» в выходе должно
+' совпадать с входом (в v2j было меньше на число сборок).
+' НОВОЕ В v2j (задача владельца 13:15 18.11):
+'  1) ОПЦИОНАЛЬНЫЙ ВХОД: конвертор принимает как ЧИСТЫЙ м2, так и м2+LH1
+'     (файлы *_LH1.txt от LH1_Convert v20; допускается и старый LH1).
+'     Приоритет вариантов одного юнита: _LH1 > чистый > _parsed; дубли одного
+'     юнита пропускаются с записью в лог.
+'  2) ВЫДАЧА ВСЕГДА м4+LH1: имя выхода <база>_m4_LH1.txt (суффикс _LH1 входа
+'     снимается); в шапку каждого юнита - маркер "// К3 (CG4_Convert v2m): м4+LH1...".
+'  3) СТРАЖИ ПО НОВОЙ СХЕМЕ LH1 v20 (решение владельца 12:27: LH1 = ТОЛЬКО давления):
+'     - ВХОД в сборке (ВСЕГДА, независимо от входа): if IsNan(P) or (Abs(P)>1e300)
+'       then begin первое появление -> NaN_seq/NaN_in[N]/NaN_nm/NaN_uz=N/NaN_tp=1;
+'       P:=100; aa2:=100; end;  - гашение не пускает NaN в матрицу Ньютон.
+'       Страж безусловен, т.к. при входе м2+LH1 стражи м2-блоков уходят вместе с
+'       заменой блоков, а стражи СТАРОЙ схемы (тик-NaN) компилируются на тех же
+'       декларациях (NaN_seq/NaN_nm/NaN_uz/NaN_tp есть в пакетах v14+ и v20);
+'     - ХВОСТ ISTO_p[N]:=X - v20-страж с гашением nm:=100; ISTO_p[N]:=100
+'       (нетронутые места: зеркала WorkZero и др.; при входе м2+LH1 хвостовые
+'       стражи уже стоят и сохраняются вместе с хвостами - не дублируются);
+'     - стражей связи dP_r НЕТ (LH1 = только давления).
+'  4) СКАН v20 в _01 (после "У И: n="): "LH1 NaN-виновники (давления): всего=...",
+'     построчные виновники (первые 30), контроль NaN в зеркалах ISTO_p, строка
+'     "LH1 NaN-скан: чисто"; kerr -790..-794.
+'  5) ЕСЛИ ВХОД УЖЕ м2+LH1: декларации и скан НЕ дублируются (маркеры "LH1 v20"/
+'     "NaN_t["/"LH1-NaN"); состав сборок от стражей не зависит: блоки заменяются
+'     целиком, страж сборки ставится всегда.
+'  6) Маркеры LH2 (a/b-разбиение) - предупреждение в лог: К3 не перестраивает
+'     a/b-частей диспетчера main.Work (м4+LH2 вне скоупа; LH2 - аварийный режим м2).
+'   НОВОЕ В v2m (19:57 19.11, замечание владельца №2 по компилируемости CG4):
+'     ДЕФЕКТ: страж хвоста печатал гашение 'nm:=100', где nm = ПРАВАЯ часть
+'     строки хвоста (для насосных хвостов - ВЫРАЖЕНИЕ 'ISTO_p[ISTO_n[K]]+ISTO_dp[K]')
+'     -> присвоение выражению: FPC 'Variable identifier expected' (строки
+'     'ISTO_p[ISTO_n[xxx]]+ISTO_dp[xxx]:=100;').
+'     ФИКС: гашение nm печатается ТОЛЬКО если nm - простое имя (буквы/цифры/_).
+'     Для составных выражений гасится ТОЛЬКО зеркало ISTO_p[N]:=100 (страж-
+'     условие и запись NaN_t/NaN_nm остаются - диагностика полная).
+'     Та же защита добавлена в страж входа (CG4_GuardIn, для страховки).
+'     Новая функция CG4_Simple (ByVal nm As String) As Boolean.
+'  Остальное - как в v2i: сборка CG4-B + решатель CG4-S + применения CG4-D,
+'  шов A и хвост T7 1:1, kerr 530000+/531000+/539000+/540000+, декларации NG по
+'  маркеру CG4_OWNED_DECLS (защита от повторной конвертации), версия >= 19.000.
+'  ТРЕБУЕТСЯ форма ufProgress с контролами Label1/Label2/Label3/FrameProgress.
+' ============================================================================
+Private uLines_cg() As String, uNLines_cg As Long
+Private curUnit_cg As Long
+Private colByNode_cg As Object
+Private bLine_cg() As Long, bN_cg() As Long, bMath_cg() As Long, bKv_cg() As Long, bEnd_cg() As Long
+Private bApp_cg() As Boolean, bP_cg() As String, bFm_cg() As String, bGt_cg() As String
+Private bLinks_cg() As String, bOrph_cg() As String, bCond_cg() As String
+Private bTail_cg() As Collection
+Private nBlocks_cg As Long
+Private tUnit_cg() As Long, tBlk_cg() As Long, tRow_cg() As Long, tName_cg() As String
+Private tMath_cg() As Long, tEnd_cg() As Long
+Private nTubes_cg As Long, nApps_cg As Long
+Private uHasTube_cg() As Boolean
+
+
+Sub CG4_Convert()
+
+    Dim pth_cg As String, outp_cg As String
+    Dim fileList_cg() As String, fUnit_cg() As String, fParsed_cg() As Boolean
+    Dim nFiles_cg As Long, fi_cg As Long, fj_cg As Long
+    Dim ln_cg As String, s2_cg As String, key_cg As String
+    Dim i_cg As Long, k_cg As Long, p1_cg As Long, p2_cg As Long
+    Dim chi_cg As Long, SZ_cg As Long, csh_cg As Boolean, hasLog_cg As Boolean
+    Dim hasNaN_cg As Boolean, owned_cg As Boolean, doNaN_cg As Boolean
+    Dim hasIN_cg As Boolean, doIN_cg As Boolean
+    Dim hasLH2_cg As Boolean
+    Dim ver_cg As Double, verTxt_cg As String, verNum_cg As Long, vsMix_cg As Boolean
+    Dim f1_cg As Integer
+    Dim warn_cg As Collection, logL_cg As Collection
+    Dim v_cg As Variant
+    Dim totB_cg As Long, totL_cg As Long, totH_cg As Long
+    Dim totI_cg As Long, totA_cg As Long, totN_cg As Long
+
+    ' --- выбор папки источника ---
+    ' InitialFileName перебивает кеш Office-диалога (иначе поле может показывать старое имя)
+    With Application.FileDialog(msoFileDialogFolderPicker)
+        .Title = "CG4 v2m (К3): папка с юнитами - чистый м2 или м2+LH1"
+        If Len(ThisWorkbook.path) > 0 Then .InitialFileName = ThisWorkbook.path & "\"
+        If .Show <> -1 Then Exit Sub
+        pth_cg = .SelectedItems(1)
+        If Right(pth_cg, 1) <> "\" Then pth_cg = pth_cg & "\"
+    End With
+
+    ' --- папка вывода: M4_<ччммдд> рядом с юнитами; второй диалог НЕ запрашивается ---
+    ' Имя: M4_ + час + минута + день генерации (пример: M4_121512 = 12:15 12-го числа).
+    ' ВАЖНО: это НЕ папка Out-выгрузки заказчика (имя m4_out запрещено владельцем),
+    ' это именно выход конвертора м4 метода 2.
+    outp_cg = pth_cg & "M4_" & Format(Hour(Now), "00") & Format(Minute(Now), "00") & Format(Day(Now), "00") & "\"
+    If Dir(outp_cg, vbDirectory) = "" Then MkDir outp_cg
+
+    ' --- форма прогресса (как в Мой_VBA: ufProgress + PrPro) ---
+    ufProgress.Show (0)
+    PrPro 0, "Подготовка..."
+
+    Set warn_cg = New Collection
+    Set logL_cg = New Collection
+
+    ' ================================================================
+    '  ПРОХОД 1: список файлов, имя юнита, версия, chi/SZ, стиль, защиты
+    ' ================================================================
+    nFiles_cg = 0
+    fnList_cg pth_cg, fileList_cg, nFiles_cg
+    If nFiles_cg = 0 Then
+        MsgBox "CG4: в папке нет *.txt файлов юнитов.", vbExclamation, "CG4"
+        Exit Sub
+    End If
+    ReDim fUnit_cg(1 To nFiles_cg)
+    ReDim fParsed_cg(1 To nFiles_cg)
+
+    ' имя юнита из текста файла (unit un_hmodel_ukr_N;) - приоритет _LH1 > чистый > _parsed
+    For fi_cg = 1 To nFiles_cg
+        PrPro 100 * fi_cg / (nFiles_cg + 0.0000000001), "Чтение юнитов: " & fileList_cg(fi_cg)
+        fUnit_cg(fi_cg) = CG4_UnitName(pth_cg & fileList_cg(fi_cg))
+    Next fi_cg
+    ' К3 v2j: приоритет вариантов одного юнита: _LH1 (м2+LH1) > чистый > _parsed.
+    ' Дубли одного юнита пропускаются с записью в лог (конвертируется ровно один).
+    Dim dictU_cg As Object
+    Set dictU_cg = CreateObject("Scripting.Dictionary")
+    For fi_cg = 1 To nFiles_cg
+        key_cg = fUnit_cg(fi_cg)
+        If Len(key_cg) > 0 Then
+            If dictU_cg.Exists(key_cg) Then
+                Dim curLH1_cg As Boolean, refIdx_cg As Long
+                curLH1_cg = (InStr(fileList_cg(fi_cg), "_LH1") > 0)
+                refIdx_cg = dictU_cg(key_cg)
+                If curLH1_cg And Not (InStr(fileList_cg(refIdx_cg), "_LH1") > 0) Then
+                    dictU_cg(key_cg) = fi_cg
+                    warn_cg.Add "юнит " & key_cg & ": выбран " & fileList_cg(fi_cg) & " (_LH1); пропущен " & fileList_cg(refIdx_cg)
+                    fParsed_cg(refIdx_cg) = True
+                ElseIf InStr(fileList_cg(refIdx_cg), "_LH1") > 0 Then
+                    warn_cg.Add "юнит " & key_cg & ": пропущен " & fileList_cg(fi_cg) & " (есть вариант _LH1)"
+                    fParsed_cg(fi_cg) = True
+                ElseIf InStr(fileList_cg(fi_cg), "_parsed") > 0 Then
+                    fParsed_cg(fi_cg) = True
+                Else
+                    warn_cg.Add "юнит " & key_cg & ": пропущен дубликат " & fileList_cg(fi_cg) & " (уже есть " & fileList_cg(refIdx_cg) & ")"
+                    fParsed_cg(fi_cg) = True
+                End If
+            Else
+                dictU_cg.Add key_cg, fi_cg
+            End If
+        End If
+    Next fi_cg
+
+    chi_cg = 0: SZ_cg = 0: csh_cg = False: hasLog_cg = False: hasNaN_cg = False: owned_cg = False
+    ver_cg = 0: vsMix_cg = False
+    Dim curVer_cg As Double, curTxt_cg As String, curP_cg As Boolean
+    verNum_cg = 0
+
+    For fi_cg = 1 To nFiles_cg
+        If Not fParsed_cg(fi_cg) Then
+            PrPro 100 * fi_cg / (nFiles_cg + 0.0000000001), "Признаки юнитов: " & fileList_cg(fi_cg)
+            If CG4_ReadFile(pth_cg & fileList_cg(fi_cg), uLines_cg, uNLines_cg) Then
+                ' маркер версии - первые 12 строк
+                curVer_cg = 0: curTxt_cg = ""
+                For i_cg = 0 To CG4_MinL(uNLines_cg, 12) - 1
+                    If CG4_RxVer(uLines_cg(i_cg), curVer_cg, curTxt_cg) Then Exit For
+                Next i_cg
+                If curVer_cg > 0 Then
+                    If ver_cg = 0 Then
+                        ver_cg = curVer_cg: verTxt_cg = curTxt_cg
+                    ElseIf Abs(curVer_cg - ver_cg) > 0.0001 Then
+                        vsMix_cg = True
+                        If curVer_cg < ver_cg Then ver_cg = curVer_cg: verTxt_cg = curTxt_cg
+                    End If
+                End If
+                ' прочие признаки
+                For i_cg = 0 To uNLines_cg - 1
+                    ln_cg = uLines_cg(i_cg)
+                    If InStr(ln_cg, "Давление и расход") > 0 Then
+                        p1_cg = InStr(1, ln_cg, "#")
+                        If p1_cg > 0 And p1_cg < InStr(ln_cg, "Давление и расход") Then
+                            k_cg = Val(Trim$(Mid$(ln_cg, p1_cg + 1)))
+                            If k_cg > chi_cg Then chi_cg = k_cg
+                        End If
+                    End If
+                    If InStr(ln_cg, "for (int") > 0 Or InStr(ln_cg, "Math.") > 0 Then csh_cg = True
+                    If InStr(ln_cg, "Log('mark") > 0 Then hasLog_cg = True
+                    If InStr(ln_cg, "LH1-NaN") > 0 Or InStr(ln_cg, "NaN_t[") > 0 Or InStr(ln_cg, "LH1 v20") > 0 Then hasNaN_cg = True
+                    If InStr(ln_cg, "LH2 v2") > 0 Then hasLH2_cg = True
+                    If InStr(ln_cg, "LH1-IN") > 0 Or InStr(ln_cg, "INOFF") > 0 Then hasIN_cg = True
+                    If InStr(ln_cg, "CG4_OWNED_DECLS") > 0 Then owned_cg = True
+                    If InStr(ln_cg, "array") > 0 And InStr(ln_cg, "ISTO_p") > 0 And SZ_cg = 0 Then     ' v2n: SZ только по ISTO_p; XX0 (array[1..200]) давал SZ=200 вместо 435
+                        p1_cg = InStr(ln_cg, "array[1..")
+                        If p1_cg > 0 Then SZ_cg = Val(Trim$(Mid$(ln_cg, p1_cg + 9)))
+                    End If
+                Next i_cg
+            End If
+        End If
+    Next fi_cg
+
+    If owned_cg Then
+        MsgBox "CG4: в наборе уже есть юнит с маркером CG4_OWNED_DECLS - комплект уже конвертирован в метод 4." & vbCrLf & _
+               "Повторная конвертация запрещена. Конвертируйте ИСХОДНЫЙ (м2) комплект.", vbExclamation, "CG4"
+        Unload ufProgress
+        Exit Sub
+    End If
+    If chi_cg = 0 Then
+        MsgBox "CG4: заголовки «# N Давление и расход для» не найдены - это сборка 19.785?", vbExclamation, "CG4"
+        Unload ufProgress
+        Exit Sub
+    End If
+    If ver_cg = 0 Then
+        MsgBox "CG4: маркер версии (-V##.### / -VP##.###) не найден в первых 12 строках ни одного юнита." & vbCrLf & _
+               "Конвертация запрещена.", vbExclamation, "CG4"
+        Unload ufProgress
+        Exit Sub
+    End If
+    If ver_cg < 19# - 0.000001 Then
+        MsgBox "CG4: версия комплекта " & verTxt_cg & " ниже 19.000 - конвертация запрещена.", vbExclamation, "CG4"
+        Unload ufProgress
+        Exit Sub
+    End If
+    If vsMix_cg Then warn_cg.Add "версии юнитов различаются - конвертация по минимальной версии " & verTxt_cg
+    If SZ_cg = 0 Then SZ_cg = chi_cg + 1
+    doNaN_cg = Not hasNaN_cg
+    doIN_cg = Not hasIN_cg
+    If hasNaN_cg And hasIN_cg Then logL_cg.Add "в комплекте уже внедрены NaN-детектор и ключи IN_OFF/IN_ON - вставки пропущены"
+    If hasLH2_cg Then logL_cg.Add "ВНИМАНИЕ: в комплекте маркеры LH2 (a/b-разбиение) - К3 не перестраивает a/b-части диспетчера main.Work (м4+LH2 вне скоупа)"
+
+    ' ================================================================
+    '  ПРОХОД 2: парсинг блоков всех юнитов + сводный список tube
+    ' ================================================================
+    nTubes_cg = 0: nApps_cg = 0: totLinks_cg = 0
+    ReDim tUnit_cg(1 To 2000): ReDim tBlk_cg(1 To 2000): ReDim tName_cg(1 To 2000)
+    ReDim tRow_cg(1 To 2000): ReDim tMath_cg(1 To 2000): ReDim tEnd_cg(1 To 2000)
+    ReDim uHasTube_cg(1 To nFiles_cg)
+    For fi_cg = 1 To nFiles_cg: uHasTube_cg(fi_cg) = False: Next fi_cg
+
+    Dim seenName_cg As Collection
+    Set seenName_cg = New Collection
+
+    For fi_cg = 1 To nFiles_cg
+        If Not fParsed_cg(fi_cg) Then
+            If CG4_ReadFile(pth_cg & fileList_cg(fi_cg), uLines_cg, uNLines_cg) Then
+                CG4_ParseUnit fi_cg
+            Else
+                warn_cg.Add fileList_cg(fi_cg) & ": файл не прочитан - пропущен"
+            End If
+        End If
+        PrPro 100 * fi_cg / (nFiles_cg + 0.0000000001), "Разбор блоков юнитов: " & fi_cg & "/" & nFiles_cg
+        DoEvents
+    Next fi_cg
+
+    If nTubes_cg = 0 Then
+        MsgBox "CG4: трубных блоков (TUBE, с «часть 1») не распознано - конвертировать нечего." & vbCrLf & _
+               "Проверьте, что в папке юниты м2-комплекта 19.785.", vbExclamation, "CG4"
+        Unload ufProgress
+        Exit Sub
+    End If
+
+    ' нумерация строк решателя Row = 1..n; colByNode: имя узла -> Row
+    Dim dupCnt_cg As Long
+    Set colByNode_cg = CreateObject("Scripting.Dictionary")
+    For i_cg = 1 To nTubes_cg
+        tRow_cg(i_cg) = i_cg
+        If Not colByNode_cg.Exists(tName_cg(i_cg)) Then colByNode_cg.Add tName_cg(i_cg), i_cg Else dupCnt_cg = dupCnt_cg + 1
+    Next i_cg
+    If dupCnt_cg > 0 Then warn_cg.Add "дубли имён трубных узлов: " & dupCnt_cg & " (в сборке строки решателя по дублям не совпадут)"
+    Dim nSolver_cg As Long
+    nSolver_cg = nTubes_cg
+
+    ' юнит решателя - юнит ПОСЛЕДНЕГО трубного блока
+    Dim solverUnit_cg As Long
+    solverUnit_cg = tUnit_cg(nTubes_cg)
+    Dim insertPt_cg As Long
+    insertPt_cg = -1
+    If CG4_ReadFile(pth_cg & fileList_cg(solverUnit_cg), uLines_cg, uNLines_cg) Then
+        For i_cg = tMath_cg(tBlk_cg(nTubes_cg)) To uNLines_cg - 1
+            If InStr(uLines_cg(i_cg), "Miss_comm:=1") > 0 Or InStr(uLines_cg(i_cg), "Miss_comm = 1") > 0 Then insertPt_cg = i_cg: Exit For
+        Next i_cg
+        If insertPt_cg < 0 Then insertPt_cg = tEnd_cg(tBlk_cg(nTubes_cg))
+    End If
+
+    ' базовый юнит (класс-родоначальник) - для деклараций NG
+    Dim baseUnit_cg As Long
+    baseUnit_cg = CG4_FindBaseUnit(pth_cg, fileList_cg, fUnit_cg, fParsed_cg, nFiles_cg)
+    If baseUnit_cg = 0 Then
+        warn_cg.Add "базовый юнит (класс без предка) не найден - декларации NG не будут вставлены, комплект не соберётся"
+    Else
+        logL_cg.Add "базовый юнит (декларации NG): " & fileList_cg(baseUnit_cg)
+    End If
+
+    ' ================================================================
+    '  ПРОХОД 3: генерация м4-комплекта
+    ' ================================================================
+    Dim outN_cg As String, isTubeUnit_cg As Boolean
+    Dim dDone_cg As Boolean, hDone_cg As Boolean, declDone_cg As Boolean
+    dDone_cg = False: hDone_cg = False: declDone_cg = False
+
+    For fi_cg = 1 To nFiles_cg
+        If Not fParsed_cg(fi_cg) Then
+            PrPro 100 * fi_cg / (nFiles_cg + 0.0000000001), "Конвертация юнитов: " & fi_cg & "/" & nFiles_cg
+            DoEvents
+
+            If fi_cg = solverUnit_cg Then
+                ' юнит решателя: сборки + решатель + применения
+                If CG4_ReadFile(pth_cg & fileList_cg(fi_cg), uLines_cg, uNLines_cg) Then
+                    CG4_ParseUnit fi_cg
+                    CG4_WriteUnit outp_cg, fileList_cg(fi_cg), True, True, doNaN_cg, doIN_cg, _
+                        solverUnit_cg, nSolver_cg, hasLog_cg, csh_cg, insertPt_cg, SZ_cg, _
+                        totB_cg, totL_cg, totH_cg, totI_cg, totA_cg, totN_cg, dDone_cg, hDone_cg, declDone_cg, (fi_cg = baseUnit_cg), baseUnit_cg
+                    fParsed_cg(fi_cg) = True
+                End If
+            ElseIf uHasTube_cg(fi_cg) Then
+                If CG4_ReadFile(pth_cg & fileList_cg(fi_cg), uLines_cg, uNLines_cg) Then
+                    CG4_ParseUnit fi_cg
+                    CG4_WriteUnit outp_cg, fileList_cg(fi_cg), True, False, doNaN_cg, doIN_cg, _
+                        solverUnit_cg, nSolver_cg, hasLog_cg, csh_cg, -1, SZ_cg, _
+                        totB_cg, totL_cg, totH_cg, totI_cg, totA_cg, totN_cg, dDone_cg, hDone_cg, declDone_cg, (fi_cg = baseUnit_cg), baseUnit_cg
+                    fParsed_cg(fi_cg) = True
+                End If
+            ElseIf ((doNaN_cg Or doIN_cg) And Not (fileList_cg(fi_cg) Like "*_0i.txt")) Or fi_cg = baseUnit_cg Then
+                ' нетронутый юнит, но нужны вставки: стражи LH1 (и/или NG-декларации базового юнита)
+                If CG4_ReadFile(pth_cg & fileList_cg(fi_cg), uLines_cg, uNLines_cg) Then
+                    CG4_WriteUnit outp_cg, fileList_cg(fi_cg), False, False, doNaN_cg, doIN_cg, _
+                        solverUnit_cg, nSolver_cg, hasLog_cg, csh_cg, -1, SZ_cg, _
+                        totB_cg, totL_cg, totH_cg, totI_cg, totA_cg, totN_cg, dDone_cg, hDone_cg, declDone_cg, (fi_cg = baseUnit_cg), baseUnit_cg
+                    fParsed_cg(fi_cg) = True
+                End If
+            Else
+                ' нетронутый юнит (или пресет _0i) - байтовая копия
+                FileCopy pth_cg & fileList_cg(fi_cg), outp_cg & fileList_cg(fi_cg)
+            End If
+        End If
+    Next fi_cg
+
+    ' лог-файл
+    f1_cg = FreeFile
+    Open outp_cg & "CG4_convert_log.txt" For Output As #f1_cg
+    Print #f1_cg, "CG4_Convert v2m (К3) - лог конвертации м2 -> м4+LH1 (LH1 v20, только давления)"
+    Print #f1_cg, "Вход: " & IIf(hasNaN_cg, "м2+LH1 (маркеры найдены - декларации/скан LH1 не дублированы)", "чистый м2 (LH1 v20 добавлен)")
+    Print #f1_cg, "Источник: " & pth_cg
+    Print #f1_cg, "Вывод:    " & outp_cg
+    Print #f1_cg, "Версия комплекта: " & verTxt_cg & ", chi=" & chi_cg & ", SZ=" & SZ_cg & _
+                  IIf(csh_cg, ", стиль C#", ", стиль pas") & IIf(hasLog_cg, ", есть Log('mark...)", "")
+    Print #f1_cg, "Трубных блоков (в Ньютоне): " & nTubes_cg & ", аппаратов пропущено: " & nApps_cg
+    Print #f1_cg, "NaN-детектор: " & IIf(hasNaN_cg, "УЖЕ БЫЛ в комплекте (декларации/скан не дублированы)", _
+                  "ДОБАВЛЕН (стражей входа=" & totB_cg & ", связей=" & totL_cg & ", хвостов=" & totH_cg & ")")
+    Print #f1_cg, "Ключи IN_OFF/IN_ON: " & IIf(hasIN_cg, "УЖЕ БЫЛИ (не дублированы)", _
+                  IIf(doIN_cg, "ДОБАВЛЕНЫ (In-гейтов=" & totI_cg & ", арматур оставлено=" & totA_cg & ", прочих KOD=" & totN_cg & ")", "не задействованы"))
+    Print #f1_cg, ""
+    For Each v_cg In logL_cg
+        Print #f1_cg, v_cg
+    Next v_cg
+    Print #f1_cg, ""
+    For Each v_cg In warn_cg
+        Print #f1_cg, "ВНИМАНИЕ: " & v_cg
+    Next v_cg
+    Close #f1_cg
+
+    Application.StatusBar = False
+
+    MsgBox "CG4 v2m (К3): готово - м4+LH1." & vbCrLf & _
+           "Версия комплекта: " & verTxt_cg & ", chi=" & chi_cg & ", SZ=" & SZ_cg & vbCrLf & _
+           "Вход: " & IIf(hasNaN_cg, "м2+LH1 (детектор уже был в комплекте)", "чистый м2 (LH1 v20 добавлен)") & vbCrLf & _
+           "Трубных блоков в Ньютоне: " & nTubes_cg & " (аппаратов пропущено: " & nApps_cg & ")" & vbCrLf & _
+           IIf(doNaN_cg, "Нулевой пациент: ДОБАВЛЕН (вход=" & totB_cg & ", связи=" & totL_cg & ", хвосты=" & totH_cg & ")", _
+                        "Нулевой пациент: детектор уже был в комплекте - только стражи в сборках") & vbCrLf & _
+           IIf(doIN_cg, "Ключи IN_OFF/IN_ON: ДОБАВЛЕНЫ (In-гейтов=" & totI_cg & ", арматур=" & totA_cg & ", прочих=" & totN_cg & ")", _
+                        "Ключи IN_OFF/IN_ON: уже были в комплекте") & vbCrLf & _
+           "Выход: " & outp_cg & vbCrLf & _
+           "Лог: CG4_convert_log.txt", vbInformation, "CG4"
+    PrPro 100, "Готово!"
+    Unload ufProgress
+End Sub
+
+' ============================================================================
+'  Вспомогательные процедуры (суффикс _cg)
+' ============================================================================
+
+' --- прогресс: полоса, имя этапа, процент (метод PrPro из Мой_VBA/суперархива) ---
+' Требует форму ufProgress с контролами: Label1 (проценты), Label2 (полоса,
+' BackColor цветной, ширина меняется), Label3 (имя этапа), FrameProgress (рамка-подложка).
+Sub PrPro(progr As Double, procName As String)
+    Dim aa1 As String ' ФИКС 19.11 00:5x: Option Explicit — aa1 (Right(...) в PrPro)
+    If progr > 100 Then progr = 100
+    If progr < 0 Then progr = 0
+    ufProgress.Label3.Caption = ">>> " + procName
+    ufProgress.Label2.Width = 0.01 + progr / 100 * ufProgress.FrameProgress.Width
+    ufProgress.Label1.Caption = Str(Format(progr * 100, 0#) / 100) + "%"
+    If InStr(ufProgress.Label1.Caption, ".") = 0 Then ufProgress.Label1.Caption = Replace(ufProgress.Label1.Caption, "%", ".0%")
+    If InStr(ufProgress.Label1.Caption, ".") > 0 Then
+        aa1 = Right(ufProgress.Label1.Caption, Len(ufProgress.Label1.Caption) - InStr(ufProgress.Label1.Caption, ".") + 1)
+        If Len(aa1) < 4 Then
+            ufProgress.Label1.Caption = Replace(ufProgress.Label1.Caption, "%", "0%")
+        End If
+    End If
+    DoEvents
+End Sub
+
+' --- список *.txt (кроме уже конвертированных *_CG4) - собирается ЗАРАНЕЕ ---
+Private Sub fnList_cg(ByVal pth As String, ByRef lst() As String, ByRef cnt As Long)
+    Dim fn As String, tmp() As String, n As Long, i As Long
+    ReDim tmp(1 To 200)
+    fn = Dir(pth & "*.txt")
+    Do While fn <> ""
+        If Not (fn Like "*_CG4.txt") And Not (fn Like "*_m4_LH1.txt") Then
+            n = n + 1
+            If n > UBound(tmp) Then ReDim Preserve tmp(1 To UBound(tmp) + 200)
+            tmp(n) = fn
+        End If
+        fn = Dir
+    Loop
+    cnt = n
+    If cnt > 0 Then
+        ReDim lst(1 To cnt)
+        For i = 1 To cnt
+            lst(i) = tmp(i)
+        Next i
+    End If
+End Sub
+
+' --- имя юнита из строки «unit <имя>;» (первые 200 строк) ---
+Private Function CG4_UnitName(ByVal fPath As String) As String
+    Dim f As Integer, ln As String, i As Long, t As String
+    CG4_UnitName = ""
+    If Not CG4_ReadFile(fPath, uLines_cg, uNLines_cg) Then Exit Function
+    For i = 0 To uNLines_cg - 1
+        t = Trim$(uLines_cg(i))
+        If InStr(1, t, "unit ", vbTextCompare) = 1 Then
+            t = Mid$(t, 6)
+            p1_cg = InStr(t, ";")
+            If p1_cg > 0 Then t = Left$(t, p1_cg - 1)
+            CG4_UnitName = Trim$(t)
+            Exit Function
+        End If
+    Next i
+End Function
+
+' --- чтение файла: cp1251 / UTF-8 (BOM) / Unicode - через ADODB.Stream ---
+Private Function CG4_ReadFile(ByVal fPath As String, ByRef lines() As String, ByRef cnt As Long) As Boolean
+    Dim st As Object, raw() As Byte, t As String
+    Dim i As Long, p As Long
+    CG4_ReadFile = False
+    If Dir(fPath) = "" Then Exit Function
+    Dim bom As Integer
+    bom = 0
+    Open fPath For Binary Access Read As #1
+    If LOF(1) >= 3 Then
+        ReDim raw(1 To 3)
+        Get #1, 1, raw
+        If raw(1) = &HEF And raw(2) = &HBB And raw(3) = &HBF Then bom = 1          ' UTF-8 BOM
+        If raw(1) = &HFF And raw(2) = &HFE Then bom = 2                            ' Unicode
+        If raw(1) = &HFE And raw(2) = &HFF Then bom = 2                            ' Unicode BE
+    End If
+    Close #1
+    Set st = CreateObject("ADODB.Stream")
+    st.Type = 2                                   ' text
+    If bom = 1 Then
+        st.Charset = "UTF-8"
+    ElseIf bom = 2 Then
+        st.Charset = "Unicode"
+    Else
+        st.Charset = "windows-1251"
+    End If
+    st.Open
+    st.LoadFromFile fPath
+    If bom = 1 Then st.Position = 3               ' пропустить BOM
+    t = st.ReadText(-1)                           ' всё до конца
+    st.Close
+    Set st = Nothing
+    t = Replace(t, vbCrLf, vbLf)
+    t = Replace(t, vbCr, vbLf)
+    Dim arr() As String
+    arr = Split(t, vbLf)
+    cnt = UBound(arr) + 1
+    ReDim lines(0 To cnt - 1)
+    For i = 0 To cnt - 1
+        lines(i) = arr(i)
+    Next i
+    Erase arr
+    CG4_ReadFile = True
+End Function
+
+' --- запись текста в файл с сохранением стиля кодировки (UTF-8 BOM или CP1251) ---
+Private Sub CG4_WriteText(ByVal fPath As String, ByRef rows() As String, ByVal bomUtf8 As Boolean)
+    Dim st As Object, t As String, i As Long
+    Set st = CreateObject("ADODB.Stream")
+    st.Type = 2
+    st.Charset = IIf(bomUtf8, "UTF-8", "windows-1251")
+    st.Open
+    For i = 0 To UBound(rows)
+        st.WriteText rows(i)
+        st.WriteText vbCrLf
+    Next i
+    st.SaveToFile fPath, 2
+    st.Close
+    Set st = Nothing
+End Sub
+
+' --- регэксп версии: -V##.### / -VP##.### ---
+Private Function CG4_RxVer(ByVal s As String, ByRef ver As Double, ByRef txt As String) As Boolean
+    Dim p As Long, q As Long, ch As String, d As String, rest As String
+    CG4_RxVer = False
+    p = InStr(s, "-V")
+    If p = 0 Then Exit Function
+    q = p + 2
+    Do While q <= Len(s) And Mid$(s, q, 1) = " "
+        q = q + 1
+    Loop
+    If Mid$(s, q, 1) = "P" Then
+        txt = "-VP"
+        q = q + 1
+    Else
+        txt = "-V"
+    End If
+    d = ""
+    Do While q <= Len(s)
+        ch = Mid$(s, q, 1)
+        If (ch >= "0" And ch <= "9") Or ch = "." Then
+            d = d & ch
+            q = q + 1
+        Else
+            Exit Do
+        End If
+    Loop
+    If Len(d) < 6 Then Exit Function
+    If Mid$(d, 3, 1) <> "." Then Exit Function
+    rest = Mid$(d, 4)
+    If Len(rest) < 3 Then Exit Function
+    ver = Val(Left$(d, 2)) + Val(Left$(rest, 3)) / 1000#
+    txt = txt & Left$(d, 2) & "." & Left$(rest, 3)
+    CG4_RxVer = True
+End Function
+
+Private Function CG4_MinL(ByVal a As Long, ByVal b As Long) As Long
+    If a < b Then CG4_MinL = a Else CG4_MinL = b
+End Function
+
+' ============================================================================
+'  ПАРСИНГ ЮНИТА (реплика CG4Unit.Parse)
+' ============================================================================
+
+Private Sub CG4_ParseUnit(ByVal unitIdx As Long)
+    Dim i As Long, m As Long
+    Dim p1 As Long, p2 As Long
+    Dim ln As String, t As String
+    Dim RX As Object, mv As Object
+    Dim curN As Long, nm As String
+    Dim mathStart As Long, appHint As Boolean, isApp As Boolean
+    Dim lastVri As Long, be As Long
+    Dim bb As Long, ee As Long, deficit As Long
+    Dim links As Collection
+    Dim k As Long
+
+    nBlocks_cg = 0
+    curUnit_cg = unitIdx
+    ReDim bLine_cg(1 To 5000): ReDim bN_cg(1 To 5000): ReDim bMath_cg(1 To 5000)
+    ReDim bKv_cg(1 To 5000): ReDim bEnd_cg(1 To 5000)
+    ReDim bApp_cg(1 To 5000): ReDim bP_cg(1 To 5000): ReDim bFm_cg(1 To 5000): ReDim bGt_cg(1 To 5000)
+    ReDim bLinks_cg(1 To 5000): ReDim bOrph_cg(1 To 5000): ReDim bCond_cg(1 To 5000)
+    ReDim bTail_cg(1 To 5000)
+
+    ' --- маркеры блоков: строка содержит «часть 1» И соответствует «// # N Давление и расход для <имя>»
+    Set RX = CreateObject("VBScript.RegExp")
+    RX.Pattern = "//\s*#\s*(\d+)\s+Давление и расход для\s+(\S+)"
+    RX.Global = True
+
+    For i = 0 To uNLines_cg - 1
+        ln = uLines_cg(i)
+        If i Mod 200 = 0 Then PrPro 100 * i / (uNLines_cg + 0.0000000001), "Разбор блоков: строка " & i & " из " & uNLines_cg
+        If InStr(ln, "часть 1") > 0 And RX.Test(ln) Then
+            nBlocks_cg = nBlocks_cg + 1
+            bLine_cg(nBlocks_cg) = i
+            Set mv = RX.Execute(ln)(0)
+            bN_cg(nBlocks_cg) = Val(mv.SubMatches(0))
+            bP_cg(nBlocks_cg) = mv.SubMatches(1)
+            bMath_cg(nBlocks_cg) = -1: bKv_cg(nBlocks_cg) = -1: bEnd_cg(nBlocks_cg) = -1
+            bApp_cg(nBlocks_cg) = False
+            bLinks_cg(nBlocks_cg) = "": bOrph_cg(nBlocks_cg) = "": bCond_cg(nBlocks_cg) = ""
+            bFm_cg(nBlocks_cg) = "": bGt_cg(nBlocks_cg) = ""
+            Set bTail_cg(nBlocks_cg) = New Collection
+            If nBlocks_cg > UBound(bLine_cg) - 2 Then
+                ' запас исчерпан - расширение всех b*-массивов (маловероятно: блоков < 5000 на юнит)
+                Dim nbNew As Long
+                nbNew = UBound(bN_cg) + 2000
+                ReDim Preserve bLine_cg(1 To nbNew): ReDim Preserve bN_cg(1 To nbNew)
+                ReDim Preserve bMath_cg(1 To nbNew): ReDim Preserve bKv_cg(1 To nbNew)
+                ReDim Preserve bEnd_cg(1 To nbNew): ReDim Preserve bApp_cg(1 To nbNew)
+                ReDim Preserve bP_cg(1 To nbNew): ReDim Preserve bFm_cg(1 To nbNew)
+                ReDim Preserve bGt_cg(1 To nbNew): ReDim Preserve bLinks_cg(1 To nbNew)
+                ReDim Preserve bOrph_cg(1 To nbNew): ReDim Preserve bCond_cg(1 To nbNew)
+                ReDim Preserve bTail_cg(1 To nbNew)
+            End If
+        End If
+    Next i
+
+    Dim rxMark2 As Object
+    Set rxMark2 = CreateObject("VBScript.RegExp")
+    rxMark2.Pattern = "dP_r\s*\[\s*(\d+)\s*\]\s*:?=\s*\(\s*1\s*-\s*([A-Za-z0-9_]+)\s*\*\s*\(\s*1\s*-\s*([A-Za-z0-9_]+)\s*\)\s*\)\s*\*?\s*(?:Math\.)?Power\s*\(\s*(?:Math\.)?Abs\s*\(\s*aa2\s*\+\s*dPL_r\s*\[\s*(\d+)\s*,\s*(\d+)\s*\]\s*-\s*(\S+?)\s*\)\s*,\s*0\.5\s*\)"
+    Dim rxUr As Object
+    Set rxUr = CreateObject("VBScript.RegExp")
+    rxUr.Pattern = "U_r\s*\[\s*(\d+)\s*\]\s*:?=\s*U_ri\s*\[\s*(\d+)\s*,\s*(\d+)\s*\]"
+    Dim rxKv As Object
+    Set rxKv = CreateObject("VBScript.RegExp")
+    rxKv.Pattern = "^K_v\s*:?="
+    Dim rxTup As Object
+    Set rxTup = CreateObject("VBScript.RegExp")
+    rxTup.Pattern = "if\s*\(\s*([A-Za-z0-9_]+)\s*\*\s*([A-Za-z0-9_]+)\s*<\s*100\s*\*\s*e27\s*\)"
+    Dim rxVri As Object
+
+    For m = 1 To nBlocks_cg
+        Dim startIdx As Long, endIdx As Long
+        startIdx = bLine_cg(m)
+        If m + 1 <= nBlocks_cg Then endIdx = bLine_cg(m + 1) Else endIdx = uNLines_cg
+
+        ' математика и признак аппарата
+        mathStart = -1: appHint = False: isApp = False
+        For i = startIdx To endIdx - 1
+            ln = uLines_cg(i)
+            If InStr(ln, "XX0[15]:=") > 0 Or InStr(ln, "G_out:=") > 0 Then appHint = True
+            If InStr(ln, "// Математика давления") > 0 Then mathStart = i: Exit For
+        Next i
+        If mathStart < 0 Then
+            bApp_cg(m) = appHint
+            GoTo NextBlock
+        End If
+        bMath_cg(m) = mathStart
+        For i = mathStart + 1 To CG4_MinL(mathStart + 5, endIdx - 1)
+            If InStr(uLines_cg(i), "ZZ0[") > 0 Then isApp = True: Exit For
+        Next i
+        If Not isApp Then isApp = appHint
+        bApp_cg(m) = isApp
+        If isApp Then
+            nApps_cg = nApps_cg + 1
+            GoTo NextBlock
+        End If
+
+        ' хвост: K_v-строка (приоритет - формула с ISTO_v[N])
+        For i = mathStart To endIdx - 1
+            t = Trim$(uLines_cg(i))
+            If rxKv.Test(t) Then
+                If bKv_cg(m) < 0 Then bKv_cg(m) = i
+                If InStr(uLines_cg(i), "ISTO_v[" & bN_cg(m) & "]") > 0 Then bKv_cg(m) = i: Exit For
+            End If
+        Next i
+        bEnd_cg(m) = IIf(bKv_cg(m) > mathStart, bKv_cg(m), endIdx)
+        If bEnd_cg(m) >= endIdx Then GoTo NextBlock
+
+        ' конец хвоста: после последней V_ri[N,k]-копии, ограничено стоп-маркерами
+        Set rxVri = CreateObject("VBScript.RegExp")
+        rxVri.Pattern = "V_ri\s*\[\s*" & bN_cg(m) & "\s*,"
+        bEnd_cg(m) = endIdx
+        lastVri = -1
+        For i = bEnd_cg(m) To CG4_MinL(endIdx - 1, bKv_cg(m) + 6000)
+            t = Trim$(uLines_cg(i))
+            If Left$(t, 4) = "// #" Or Left$(t, 10) = "procedure " Or Left$(t, 6) = "except" Or t = "end." _
+               Or Left$(t, 8) = "// ТУПИКИ" Or Left$(t, 8) = "// НАСОСЫ" Or Left$(t, 6) = "// ДУДР" Or Left$(t, 9) = "// РАСХОДЫ" Then
+                bEnd_cg(m) = i
+                Exit For
+            End If
+            If rxVri.Test(uLines_cg(i)) Then lastVri = i
+        Next i
+        If lastVri >= 0 And bEnd_cg(m) > lastVri + 1 Then
+            be = lastVri + 1
+            Do While be < bEnd_cg(m)
+                If Len(Trim$(uLines_cg(be))) > 0 Then Exit Do
+                be = be + 1
+            Loop
+            bEnd_cg(m) = be
+        End If
+
+        ' связи: dP_r-строки + U_r-копии (внутри блока до хвоста)
+        Set links = New Collection
+        For i = startIdx To bEnd_cg(m) - 1
+            ln = uLines_cg(i)
+            If rxMark2.Test(ln) Then
+                Set mv = rxMark2.Execute(ln)(0)
+                If Val(mv.SubMatches(3)) = bN_cg(m) Then
+                    k = Val(mv.SubMatches(4))
+                    If Not CG4_LinkExists(links, k) Then
+                        links.Add k & "|" & mv.SubMatches(1) & "|" & mv.SubMatches(2) & "|" & mv.SubMatches(5)
+                    Else
+                        CG4_LinkUpdate links, k, mv.SubMatches(1), mv.SubMatches(2), mv.SubMatches(5)
+                    End If
+                End If
+            End If
+            If rxUr.Test(ln) Then
+                Set mv = rxUr.Execute(ln)(0)
+                If Val(mv.SubMatches(1)) = bN_cg(m) Then
+                    k = Val(mv.SubMatches(0))
+                    If Not CG4_LinkExists(links, k) Then
+                        links.Add k & "|||dPL_r[" & bN_cg(m) & "," & k & "]"
+                    End If
+                End If
+            End If
+        Next i
+    Dim ls As String, lk As Variant
+    ls = ""
+    For i = 1 To links.Count
+        lk = Split(links(i), "|")
+        ' защита: связь без проводимостей или без имени соседа в сборку не идёт (иначе - битый Pascal)
+        If Val(lk(0)) >= 1 And Len(Trim$(lk(1))) > 0 And Len(Trim$(lk(3))) > 0 Then
+            If Len(ls) > 0 Then ls = ls & ";"
+            ls = ls & links(i)
+        End If
+    Next i
+        ' связи сортируются по k (как в CG4Unit: Links.OrderBy(l => l.K))
+        Dim arrL() As String, cntA As Long, a1 As Long, b1 As Long, tmpS As String
+        arrL = Split(ls, ";")
+        cntA = UBound(arrL) + 1
+        For a1 = 0 To cntA - 2
+            For b1 = a1 + 1 To cntA - 1
+                If Val(Split(arrL(b1), "|")(0)) < Val(Split(arrL(a1), "|")(0)) Then
+                    tmpS = arrL(a1): arrL(a1) = arrL(b1): arrL(b1) = tmpS
+                End If
+            Next b1
+        Next a1
+        ls = Join(arrL, ";")
+        bLinks_cg(m) = ls
+        For i = bKv_cg(m) To bEnd_cg(m) - 1
+            If rxTup.Test(uLines_cg(i)) Then
+                Set mv = rxTup.Execute(uLines_cg(i))(0)
+                bFm_cg(m) = mv.SubMatches(0): bGt_cg(m) = mv.SubMatches(1)
+                Exit For
+            End If
+        Next i
+        If Len(bFm_cg(m)) = 0 Then
+            bFm_cg(m) = "Fm" & bP_cg(m): bGt_cg(m) = "GTc" & bP_cg(m)
+        End If
+
+        ' хвост (MathEnd..BlockEnd)
+        For i = bKv_cg(m) To bEnd_cg(m) - 1
+            bTail_cg(m).Add uLines_cg(i)
+        Next i
+
+        ' орфанные end: дефицит end по ВСЕЙ зоне mathStart..bEnd (математика+хвост).
+        ' ФИКС v2m: в v2j дефицит считался только до K_v - end, закрывающий begin
+        ' м2-петли, лежал в хвосте и изымался ложно (begin оставался без пары,
+        ' юниты не компилировались: 260 в main + 65 в _ 1 потерянных end).
+        bb = 0: ee = 0
+        For i = mathStart To bEnd_cg(m) - 1
+            CG4_CountBeginEnd uLines_cg(i), bb, ee
+        Next i
+        deficit = bb - ee
+        If deficit > 0 Then
+            For i = bKv_cg(m) To bEnd_cg(m) - 1
+                If deficit <= 0 Then Exit For
+                If Left$(Trim$(uLines_cg(i)), 3) = "end" Then
+                    deficit = deficit - 1
+                    bOrph_cg(m) = bOrph_cg(m) & IIf(Len(bOrph_cg(m)) > 0, ",", "") & CStr(i)
+                End If
+            Next i
+        End If
+
+        ' MathCond: условие математика-if (строки до первого lone-begin)
+        Dim begIdx As Long
+        begIdx = -1
+        For i = mathStart To bKv_cg(m) - 1
+            If Trim$(uLines_cg(i)) = "begin" Then begIdx = i: Exit For
+        Next i
+        If begIdx > mathStart Then
+            Dim condLines As Collection
+            Set condLines = New Collection
+            k = begIdx - 1
+            Do While k >= mathStart
+                t = Trim$(uLines_cg(k))
+                If Len(t) = 0 Then
+                    k = k - 1
+                Else
+                    If condLines.Count = 0 Then
+                        ' Before:=1 в пустую коллекцию даёт "Invalid procedure call"
+                        condLines.Add t
+                    Else
+                        condLines.Add t, , 1
+                    End If
+                    If InStr(1, t, "if ", vbTextCompare) = 1 Or InStr(1, t, "if(", vbTextCompare) = 1 Or InStr(1, t, "if (", vbTextCompare) = 1 Then Exit Do
+                    k = k - 1
+                End If
+            Loop
+            Dim cond As String
+            cond = ""
+            For i = 1 To condLines.Count
+                If Len(cond) > 0 Then cond = cond & " "
+                cond = cond & condLines(i)
+            Next i
+            If InStr(1, cond, "if ", vbTextCompare) = 1 Then cond = Mid$(cond, 4)
+            If InStr(1, cond, "if(", vbTextCompare) = 1 Then cond = Mid$(cond, 4)
+            If InStr(1, cond, "if (", vbTextCompare) = 1 Then cond = Mid$(cond, 5)
+            If Len(cond) > 3 And LCase$(Right$(cond, 4)) = "then" Then cond = Trim$(Left$(cond, Len(cond) - 4))
+            bCond_cg(m) = cond
+        End If
+
+        ' в сводный список tube - только блоки СВЯЗЯМИ
+        If Len(bLinks_cg(m)) > 0 Then
+            nTubes_cg = nTubes_cg + 1
+            If nTubes_cg > UBound(tUnit_cg) Then
+                Dim newSize As Long
+                newSize = UBound(tUnit_cg) + 2000
+                ReDim Preserve tUnit_cg(1 To newSize)
+                ReDim Preserve tBlk_cg(1 To newSize)
+                ReDim Preserve tName_cg(1 To newSize)
+                ReDim Preserve tRow_cg(1 To newSize)
+                ReDim Preserve tMath_cg(1 To newSize)
+                ReDim Preserve tEnd_cg(1 To newSize)
+            End If
+            tUnit_cg(nTubes_cg) = unitIdx
+            tBlk_cg(nTubes_cg) = m
+            tName_cg(nTubes_cg) = bP_cg(m)
+            tMath_cg(nTubes_cg) = bMath_cg(m)
+            tEnd_cg(nTubes_cg) = bEnd_cg(m)
+            uHasTube_cg(unitIdx) = True
+        End If
+NextBlock:
+    Next m
+End Sub
+
+Private Function CG4_LinkExists(ByRef col As Collection, ByVal kk As Long) As Boolean
+    Dim i As Long, p As Long
+    CG4_LinkExists = False
+    For i = 1 To col.Count
+        p = InStr(col(i), "|")
+        If Val(Left$(col(i), p - 1)) = kk Then CG4_LinkExists = True: Exit Function
+    Next i
+End Function
+
+Private Sub CG4_LinkUpdate(ByRef col As Collection, ByVal kk As Long, ByVal p1 As String, ByVal p2 As String, ByVal nb As String)
+    Dim i As Long, p As Long
+    For i = 1 To col.Count
+        p = InStr(col(i), "|")
+        If Val(Left$(col(i), p - 1)) = kk Then
+            Dim parts As Variant
+            parts = Split(col(i), "|")
+            col.Remove i
+            If i - 1 < 1 Then
+                ' коллекция могла опустеть (Remove единственного элемента) -
+                ' After=0 недопустим, добавляем в конец
+                col.Add kk & "|" & p1 & "|" & p2 & "|" & nb
+            Else
+                col.Add kk & "|" & p1 & "|" & p2 & "|" & nb, , , i - 1
+            End If
+            Exit Sub
+        End If
+    Next i
+End Sub
+
+Private Sub CG4_CountBeginEnd(ByVal line As String, ByRef bb As Long, ByRef ee As Long)
+    Dim ci As Long, s As String, words As Variant, w As Variant
+    ci = InStr(line, "//")
+    If ci > 0 Then s = Left$(line, ci - 1) Else s = line
+    s = Replace(s, "(", " "): s = Replace(s, ")", " ")
+    s = Replace(s, ",", " "): s = Replace(s, ";", " ")
+    s = Replace(s, ":", " "): s = Replace(s, "=", " ")
+    s = Replace(s, "+", " "): s = Replace(s, "-", " ")
+    s = Replace(s, "*", " "): s = Replace(s, "/", " ")
+    s = Replace(s, "<", " "): s = Replace(s, ">", " ")
+    s = Replace(s, "[", " "): s = Replace(s, "]", " ")
+    words = Split(s, " ")
+    For Each w In words
+        If Len(w) > 0 Then
+            If LCase$(w) = "begin" Then bb = bb + 1
+            If LCase$(w) = "end" Then ee = ee + 1
+        End If
+    Next w
+End Sub
+
+' --- базовый юнит: класс без предка ---
+Private Function CG4_FindBaseUnit(ByVal pth As String, ByRef fl() As String, ByRef fun() As String, ByRef fp() As Boolean, ByVal cnt As Long) As Long
+    Dim i As Long, j As Long, ln As String
+    Dim nm As String, anc As String
+    Dim clsNm() As String, clsAnc() As String, clsFile() As Long
+    ReDim clsNm(1 To 200): ReDim clsAnc(1 To 200): ReDim clsFile(1 To 200)
+    Dim cntCls As Long
+    Dim RX As Object, mv As Object
+    Set RX = CreateObject("VBScript.RegExp")
+    RX.Pattern = "(\w+)\s*=\s*class\s*(\(\s*(\w+)\s*\))?"
+    cntCls = 0
+    For i = 1 To cnt
+        If Not fp(i) Then
+            If CG4_ReadFile(pth & fl(i), uLines_cg, uNLines_cg) Then
+                For j = 0 To uNLines_cg - 1
+                    ln = uLines_cg(j)
+                    If RX.Test(ln) Then
+                        Set mv = RX.Execute(ln)(0)
+                        nm = mv.SubMatches(0)
+                        If mv.SubMatches.Count > 2 Then
+                            If Len(mv.SubMatches(2)) > 0 Then anc = mv.SubMatches(2) Else anc = ""
+                        Else
+                            anc = ""
+                        End If
+                        cntCls = cntCls + 1
+                        If cntCls > UBound(clsNm) Then
+                            ReDim Preserve clsNm(1 To UBound(clsNm) + 200)
+                            ReDim Preserve clsAnc(1 To UBound(clsAnc) + 200)
+                            ReDim Preserve clsFile(1 To UBound(clsFile) + 200)
+                        End If
+                        clsNm(cntCls) = nm: clsAnc(cntCls) = anc: clsFile(cntCls) = i
+                        Exit For
+                    End If
+                Next j
+            End If
+        End If
+    Next i
+    CG4_FindBaseUnit = 0
+    For i = 1 To cntCls
+        If Len(clsAnc(i)) = 0 Or clsAnc(i) = clsNm(i) Then CG4_FindBaseUnit = clsFile(i): Exit Function
+    Next i
+    If cnt > 0 Then CG4_FindBaseUnit = 1
+End Function
+
+' --- тест строки-класса («=class» / «= class» / «= class (...)») ---
+Private Function CG4_RxClassTest(ByVal ln As String) As Boolean
+    Dim RX As Object
+    Set RX = CreateObject("VBScript.RegExp")
+    RX.Pattern = "\w+\s*=\s*class\b"
+    CG4_RxClassTest = RX.Test(ln)
+End Function
+
+Private Sub CG4_ClassNames(ByVal ln As String, ByRef nm As String, ByRef anc As String)
+    Dim p As Long, t As String, words As Variant
+    nm = "": anc = ""
+    p = InStr(ln, "= class")
+    If p = 0 Then Exit Sub
+    t = Trim$(Left$(ln, p - 1))
+    words = Split(t, " ")
+    If UBound(words) >= 1 Then nm = words(UBound(words)) Else nm = t
+    If InStr(nm, "(") > 0 Then nm = Left$(nm, InStr(nm, "(") - 1)
+    Dim q As Long
+    q = InStr(p, ln, "(")
+    If q > 0 Then
+        t = Mid$(ln, q + 1)
+        t = Replace(t, ")", "")
+        anc = Trim$(t)
+    Else
+        anc = nm
+    End If
+End Sub
+
+Private Function CG4_CountBeginEnd2(ByVal line As String) As Long
+    Dim bb As Long, ee As Long
+    bb = 0: ee = 0
+    CG4_CountBeginEnd line, bb, ee
+    CG4_CountBeginEnd2 = bb - ee
+End Function
+
+' --- строка решателя (Row) для блока m юнита u ---
+Private Function CG4_RowOf(ByVal u As Long, ByVal m As Long) As Long
+    Dim j As Long
+    For j = 1 To nTubes_cg
+        If tUnit_cg(j) = u And tBlk_cg(j) = m Then CG4_RowOf = tRow_cg(j): Exit Function
+    Next j
+    CG4_RowOf = 0
+End Function
+
+' ============================================================================
+'  ВЫВОД ЮНИТА (конвертация + NaN-вставки + декларации)
+' ============================================================================
+Private Function CG4_WriteUnit(ByVal outP As String, ByVal fName As String, ByVal isTubeUnit As Boolean, _
+                               ByVal isSolverUnit As Boolean, ByVal doNaN As Boolean, ByVal doIN As Boolean, ByVal solverUnit As Long, _
+                               ByVal nSolver As Long, ByVal hasLog As Boolean, ByVal csh As Boolean, _
+                               ByVal insertPt As Long, ByVal SZ As Long, ByRef totB As Long, ByRef totL As Long, _
+                               ByRef totH As Long, ByRef totI As Long, ByRef totA As Long, ByRef totN As Long, _
+                               ByRef dDone As Boolean, ByRef hDone As Boolean, _
+                               ByRef declDone As Boolean, ByVal wantDecls As Boolean, ByVal baseUnit As Long) As Long
+    Dim i As Long, m As Long, j As Long, r As Long, cntT As Long
+    Dim f As Integer
+    Dim ln As String, t As String, s As String
+    Dim curN As Long, p1 As Long, p2 As Long
+    Dim inW As Long, gh As Long, g As Long, gated As String
+    Dim myTube() As Long, myRow() As Long
+    ReDim myTube(1 To nBlocks_cg + 1): ReDim myRow(1 To nBlocks_cg + 1)
+    cntT = 0
+    For m = 1 To nBlocks_cg
+        If bMath_cg(m) >= 0 And bKv_cg(m) > bMath_cg(m) And Len(bLinks_cg(m)) > 0 Then
+            cntT = cntT + 1
+            myTube(cntT) = m
+            myRow(cntT) = CG4_RowOf(curUnit_cg, m)
+        End If
+    Next m
+
+    ' орфанные end только КОНВЕРТИРУЕМЫХ блоков (у нетронутых блоков м2-код не трогается)
+    Dim orph As Object
+    Set orph = CreateObject("Scripting.Dictionary")
+    For m = 1 To cntT
+        If Len(bOrph_cg(myTube(m))) > 0 Then
+            Dim parts As Variant
+            parts = Split(bOrph_cg(myTube(m)), ",")
+            For j = 0 To UBound(parts)
+                orph(CLng(parts(j))) = True
+            Next j
+        End If
+    Next m
+
+    Dim tailDone As Boolean
+    tailDone = Not isSolverUnit
+    Dim nOut As Long
+    nOut = 0
+
+    f = FreeFile
+    Open outP & CG4_OutName(fName) For Output As #f
+    Print #f, "// К3 (CG4_Convert v2m): м4+LH1; стражи LH1 v20 (только давления); NG-решатель"
+
+    ' — вариант для нетронутых юнитов: прямая запись без сборок —
+    If Not isTubeUnit Then
+        For i = 0 To uNLines_cg - 1
+            ln = uLines_cg(i)
+            If i Mod 200 = 0 Then PrPro 100 * i / (uNLines_cg + 0.0000000001), "Запись нетронутого юнита: " & fName
+            t = Trim$(ln)
+            ' — v2: режим WorkIn (юнит _0): ключи IN_OFF/IN_ON после try + гейты In-присвоений
+            If InStr(ln, ".WorkIn;") > 0 And InStr(ln, "procedure T_Hmodel") > 0 Then
+                Print #f, ln
+                inW = 1
+            ElseIf inW = 1 And Trim$(ln) = "try" Then
+                Print #f, ln
+                If doIN Then CG4_InKeys f, csh
+                inW = 2
+            ElseIf inW = 2 Then
+                If InStr(Trim$(ln), "Miss_comm:=1") = 1 Then inW = 0
+                gh = 0
+                If doIN And InStr(ln, ".Get") > 0 And Left$(Trim$(ln), 2) <> "//" Then
+                    g = CG4_TryGate(ln, csh, gated)
+                    If g = 1 Then
+                        Print #f, gated: gh = 1: totI = totI + 1
+                    ElseIf g = 2 Then
+                        Print #f, ln: gh = 1: totA = totA + 1
+                    Else
+                        totN = totN + 1
+                    End If
+                End If
+                If gh = 0 Then Print #f, ln
+            ' вставка деклараций NaN+IN (файл деклараций)
+            ElseIf (doNaN Or doIN) And (Not dDone) And InStr(ln, "array") > 0 And (InStr(ln, "ISTO_p") > 0 Or InStr(ln, "XX0") > 0) Then
+                Print #f, ln
+                CG4_NanDecls f, SZ, csh, doNaN, doIN
+                dDone = True
+                nOut = nOut + 1
+            ElseIf (doNaN Or doIN) And (Not hDone) And InStr(ln, "У И: n=") > 0 And InStr(ln, "Б У И") = 0 Then
+                Print #f, ln
+                If doIN Then CG4_InLogGates f, csh
+                If doNaN Then CG4_NanScan f, SZ, (InStr(ln, "Log('") > 0)
+                hDone = True
+                nOut = nOut + 1
+            ElseIf wantDecls And (Not declDone) And CG4_RxClassTest(ln) Then
+                Print #f, ln
+                CG4_NgDecls f, nSolver, csh
+                declDone = True
+                nOut = nOut + 1
+            Else
+                Print #f, ln
+            End If
+            ' стражи LH1 на строках-присвоениях (вне WorkIn; только если NaN добавляется)
+            If inW = 0 Then If doNaN Then CG4_LineGuards f, ln, curN, SZ, totB, totL, totH
+            ' обновить curN по заголовку
+            p1 = InStr(ln, "Давление и расход")
+            If p1 > 0 Then
+                p2 = InStr(1, ln, "#")
+                If p2 > 0 And p2 < p1 Then curN = Val(Trim$(Mid$(ln, p2 + 1, p1 - p2 - 1)))
+            End If
+        Next i
+        Close #f
+        Exit Function
+    End If
+
+    ' — конвертируемый юнит (сборки + опционально решатель) —
+    Dim hit As Long, hitRow As Long
+    i = 0
+    Do While i < uNLines_cg
+        ln = uLines_cg(i)
+        If i Mod 200 = 0 Then PrPro 100 * i / (uNLines_cg + 0.0000000001), "Конвертация юнита: " & fName
+        t = Trim$(ln)
+
+        ' сборка вместо математики
+        hit = 0
+        For m = 1 To cntT
+            If bMath_cg(myTube(m)) = i Then hit = m: Exit For
+        Next m
+        If hit > 0 Then
+            Print #f, CG4_BuildAssembly(myTube(hit), myRow(hit), nSolver, csh, doNaN, totB, totL)
+            i = bMath_cg(myTube(hit)) + 1       ' пропустить строки математики (выведена сборка)
+        ElseIf orph.Exists(i) Then
+            i = i + 1                            ' орфанный end пропускается
+        Else
+            If (Not tailDone) And i = insertPt Then
+                CG4_SolverTail f, nSolver, hasLog, csh
+                For m = 1 To cntT
+                    CG4_Apply f, myTube(m), myRow(m), csh
+                Next m
+                tailDone = True
+            End If
+            ' вставки деклараций/скана (нетронутые места)
+            If (doNaN Or doIN) And (Not dDone) And InStr(ln, "array") > 0 And (InStr(ln, "ISTO_p") > 0 Or InStr(ln, "XX0") > 0) Then
+                Print #f, ln
+                CG4_NanDecls f, SZ, csh, doNaN, doIN
+                dDone = True
+            ElseIf (doNaN Or doIN) And (Not hDone) And InStr(ln, "У И: n=") > 0 And InStr(ln, "Б У И") = 0 Then
+                Print #f, ln
+                If doIN Then CG4_InLogGates f, csh
+                If doNaN Then CG4_NanScan f, SZ, (InStr(ln, "Log('") > 0)
+                hDone = True
+            ElseIf wantDecls And (Not declDone) And CG4_RxClassTest(ln) Then
+                Print #f, ln
+                CG4_NgDecls f, nSolver, csh
+                declDone = True
+            Else
+                Print #f, ln
+                If doNaN Then CG4_LineGuards f, ln, curN, SZ, totB, totL, totH
+            End If
+            p1 = InStr(ln, "Давление и расход")
+            If p1 > 0 Then
+                p2 = InStr(1, ln, "#")
+                If p2 > 0 And p2 < p1 Then curN = Val(Trim$(Mid$(ln, p2 + 1, p1 - p2 - 1)))
+            End If
+            i = i + 1
+        End If
+    Loop
+    If Not tailDone Then
+        CG4_SolverTail f, nSolver, hasLog, csh
+        For m = 1 To cntT
+            CG4_Apply f, myTube(m), myRow(m), csh
+        Next m
+    End If
+    Close #f
+    CG4_WriteUnit = cntT
+End Function
+
+' --- выходное имя файла: <имя>_CG4.txt ---
+Private Function CG4_OutName(ByVal fName As String) As String
+    ' К3 v2j: выдача всегда м4+LH1: база без суффикса _LH1 -> <база>_m4_LH1.txt
+    Dim b As String
+    b = Left$(fName, Len(fName) - 4)
+    If Len(b) > 4 And Right$(b, 4) = "_LH1" Then b = Left$(b, Len(b) - 4)
+    CG4_OutName = b & "_m4_LH1.txt"
+End Function
+
+' --- v3: гейт XX0[51] снят (A3); процедура CG4_CloseGate больше не вызывается ---
+Private Sub CG4_CloseGate(ByVal f As Integer, ByVal csh As Boolean)
+    If csh Then
+        Print #f, "}"
+    Else
+        Print #f, "end;"
+    End If
+End Sub
+
+' ============================================================================
+'  CG4-B: СБОРКА ВКЛАДА БЛОКА (реплика BuildAssembly, с NaN-стражами)
+' ============================================================================
+Private Function CG4_BuildAssembly(ByVal m As Long, ByVal r As Long, ByVal nSolver As Long, _
+                                   ByVal csh As Boolean, ByVal doNaN As Boolean, _
+                                   ByRef totB As Long, ByRef totL As Long) As String
+    Dim sb As String, p As String, n As Long, fm As String, gt As String
+    Dim links As Variant, cntL As Long
+    Dim kk As Long, ps As String, pn As String, nb As String
+    Dim j As Long, colv As Variant
+    Dim termIn As String, termOut As String, termDiag As String, termNg3 As String
+    Dim dpl As String
+
+    p = bP_cg(m): n = bN_cg(m): fm = bFm_cg(m): gt = bGt_cg(m)
+    links = Split(bLinks_cg(m), ";")
+    cntL = UBound(links) + 1
+    termIn = "": termOut = "": termDiag = "": termNg3 = ""
+    sb = ""
+
+    If csh Then
+        sb = sb & "// CG4-B: сборка вклада для " & p & " (#" & n & ", строка " & r & ")" & vbCrLf
+        sb = sb & "aa2 = " & p & " + INT_PRT - 1;" & vbCrLf
+        ' LH1 v21/CG4 v3: страж входа в сборке - ВСЕГДА; РЕФОРМА ГАШЕНИЙ:
+        ' последнее живое значение из зеркала ISTO_p -> крайний 100; диапазон LIM_P;
+        ' alarm: Log при каждом гашении (kerr -795/-796)
+        sb = sb & "if (double.IsNaN(" & p & ")||Math.Abs(" & p & ")>1e300) {" & vbCrLf
+        sb = sb & "  if ((NaN_in[" & n & "]==0) && (NaN_seq<1000)) { NaN_seq++; NaN_in[" & n & "]=NaN_seq; NaN_nm[NaN_seq]="" & P & ""; NaN_uz[NaN_seq]=" & n & """; NaN_tp[NaN_seq]=1; }" & vbCrLf
+        sb = sb & "  if (!(double.IsNaN(ISTO_p[" & CStr(n) & "])) && (Math.Abs(ISTO_p[" & CStr(n) & "])<=1e300) && (ISTO_p[" & CStr(n) & "]>1e-9)) {" & vbCrLf
+        If CG4_Simple(p) Then sb = sb & "    " & p & "=ISTO_p[" & CStr(n) & "];" & vbCrLf
+        sb = sb & "    aa2=ISTO_p[" & CStr(n) & "];" & vbCrLf
+        sb = sb & "  } else {" & vbCrLf
+        If CG4_Simple(p) Then sb = sb & "    " & p & "=100;" & vbCrLf
+        sb = sb & "    aa2=100;" & vbCrLf
+        sb = sb & "  }" & vbCrLf
+        sb = sb & "  Log("" LH1 freeze: узел #"" + " & CStr(n) & " + "" - " & p & " NaN/бред - last-good"");  kerr = -795;" & vbCrLf
+        sb = sb & "} else if ((LIM_P_max>0) && (((" & p & ")<LIM_P_min) || ((" & p & ")>LIM_P_max))) {" & vbCrLf
+        sb = sb & "  if ((NaN_in[" & n & "]==0) && (NaN_seq<1000)) { NaN_seq++; NaN_in[" & n & "]=NaN_seq; NaN_nm[NaN_seq]=""диапазон: "" & P & ""; NaN_uz[NaN_seq]=" & n & """; NaN_tp[NaN_seq]=1; }" & vbCrLf
+        sb = sb & "  if (!(double.IsNaN(ISTO_p[" & CStr(n) & "])) && (Math.Abs(ISTO_p[" & CStr(n) & "])<=1e300) && (ISTO_p[" & CStr(n) & "]>1e-9)) {" & vbCrLf
+        If CG4_Simple(p) Then sb = sb & "    " & p & "=ISTO_p[" & CStr(n) & "];" & vbCrLf
+        sb = sb & "    aa2=ISTO_p[" & CStr(n) & "];" & vbCrLf
+        sb = sb & "  } else {" & vbCrLf
+        If CG4_Simple(p) Then sb = sb & "    " & p & "=100;" & vbCrLf
+        sb = sb & "    aa2=100;" & vbCrLf
+        sb = sb & "  }" & vbCrLf
+        sb = sb & "  Log("" LH1 freeze: узел #"" + " & CStr(n) & " + "" - " & p & " вне диапазона LIM_P - last-good"");  kerr = -796;" & vbCrLf
+        sb = sb & "}" & vbCrLf
+        totB = totB + 1
+
+        If Len(bCond_cg(m)) > 0 Then
+            sb = sb & "if (" & bCond_cg(m) & ") { NGFix[" & r & "] = 0; } else { NGFix[" & r & "] = 1; }" & vbCrLf
+        Else
+            sb = sb & "if (" & fm & " * " & gt & " < 100 * e27) { NGFix[" & r & "] = 1; } else { NGFix[" & r & "] = 0; }" & vbCrLf
+        End If
+        sb = sb & "NGP0[" & r & "] = " & p & " + INT_PRT - 1;  NGPmax[" & r & "] = pmax;  NGPmin[" & r & "] = pmin;  NGNmax[" & r & "] = n_max;  NGaa05[" & r & "] = aa05;  kerr = 530000 + " & n & ";" & vbCrLf
+        sb = sb & "if (NGFix[" & r & "] < 1) {" & vbCrLf
+        sb = sb & "  for (NGj2 = 1; NGj2 <= " & nSolver & "; NGj2++) { NGJ[" & r & ",NGj2] = 0; }" & vbCrLf
+        For j = 0 To cntL - 1
+            CG4_SplitLink CStr(links(j)), kk, ps, pn, nb
+            dpl = "dPL_r[" & n & "," & kk & "]"
+            sb = sb & "  V_r[" & kk & "] = 1;  if (aa2 + " & dpl & " - " & nb & " < 0) V_r[" & kk & "] = -1;" & vbCrLf
+            sb = sb & "  dP_r[" & kk & "] = (1 - " & ps & " * (1 - " & pn & ")) * Math.Pow(Math.Abs(aa2 + " & dpl & " - " & nb & "), 0.5);  kerr = 531000 + " & n & "*10 + " & kk & ";" & vbCrLf
+            termIn = termIn & IIf(Len(termIn) > 0, "+", "") & "U_ri[" & n & "," & kk & "]*dP_r[" & kk & "]*(1-V_r[" & kk & "])/2"
+            termOut = termOut & IIf(Len(termOut) > 0, "+", "") & "U_ri[" & n & "," & kk & "]*dP_r[" & kk & "]*(1+V_r[" & kk & "])/2"
+            termDiag = termDiag & IIf(Len(termDiag) > 0, "+", "") & "U_ri[" & n & "," & kk & "]*(1-" & ps & "*(1-" & pn & "))*0.5/Math.Pow(Math.Abs(aa2 + " & dpl & " - " & nb & ")+1e-6,0.5)"
+            termNg3 = termNg3 & IIf(Len(termNg3) > 0, "+", "") & "U_ri[" & n & "," & kk & "]"
+        Next j
+        sb = sb & "  S_in = K_fff*(" & termIn & ");" & vbCrLf
+        sb = sb & "  S_out = K_fff*(" & termOut & ");" & vbCrLf
+        sb = sb & "  aa1 = K_svod*(S_out - S_in)/K_fff;" & vbCrLf
+        sb = sb & "  NGR[" & r & "] = -aa1;" & vbCrLf
+        sb = sb & "  NGJ[" & r & "," & r & "] = " & termDiag & ";" & vbCrLf
+        For j = 0 To cntL - 1
+            CG4_SplitLink CStr(links(j)), kk, ps, pn, nb
+            dpl = "dPL_r[" & n & "," & kk & "]"
+            If colByNode_cg.Exists(nb) Then
+                colv = colByNode_cg(nb)
+                sb = sb & "  NGJ[" & r & "," & colv & "] = NGJ[" & r & "," & colv & "] - U_ri[" & n & "," & kk & "]*(1-" & ps & "*(1-" & pn & "))*0.5/Math.Pow(Math.Abs(aa2 + " & dpl & " - " & nb & ")+1e-6,0.5);" & vbCrLf
+            End If
+        Next j
+        sb = sb & "  NGaa3[" & r & "] = (e27 + (" & termNg3 & "))*XX0[55]/10;  kerr = 539000 + " & n & ";" & vbCrLf
+        sb = sb & "}" & vbCrLf
+    Else
+        sb = sb & "// CG4-B: сборка вклада для " & p & " (#" & n & ", строка " & r & ")" & vbCrLf
+        sb = sb & "aa2:=" & p & "+INT_PRT-1;" & vbCrLf
+        ' LH1 v21/CG4 v3: страж входа в сборке - ВСЕГДА; РЕФОРМА ГАШЕНИЙ:
+        ' последнее живое значение из зеркала ISTO_p -> крайний 100; диапазон LIM_P;
+        ' alarm: Log при каждом гашении (kerr -795/-796)
+        sb = sb & "if IsNan(" & p & ") or (Abs(" & p & ")>1e300) then begin" & vbCrLf
+        sb = sb & "  if (NaN_in[" & n & "]=0) and (NaN_seq<1000) then begin NaN_seq:=NaN_seq+1; NaN_in[" & n & "]:=NaN_seq; NaN_nm[NaN_seq]:='" & p & "'; NaN_uz[NaN_seq]:=" & CStr(n) & "; NaN_tp[NaN_seq]:=1; end;" & vbCrLf
+        sb = sb & "  if (Not IsNan(ISTO_p[" & CStr(n) & "])) and (Abs(ISTO_p[" & CStr(n) & "])<=1e300) and (ISTO_p[" & CStr(n) & "]>1e-9) then begin" & vbCrLf
+        If CG4_Simple(p) Then sb = sb & "    " & p & ":=ISTO_p[" & CStr(n) & "];" & vbCrLf
+        sb = sb & "    aa2:=ISTO_p[" & CStr(n) & "];" & vbCrLf
+        sb = sb & "  end else begin" & vbCrLf
+        If CG4_Simple(p) Then sb = sb & "    " & p & ":=100;" & vbCrLf
+        sb = sb & "    aa2:=100;" & vbCrLf
+        sb = sb & "  end;" & vbCrLf
+        sb = sb & "  Log(' LH1 freeze: узел #" & CStr(n) & " - " & p & " NaN/бред - last-good');  kerr:= -795;" & vbCrLf
+        sb = sb & "end else if ((LIM_P_max>0) and (((" & p & ")<LIM_P_min) or ((" & p & ")>LIM_P_max))) then begin" & vbCrLf
+        sb = sb & "  if (NaN_in[" & n & "]=0) and (NaN_seq<1000) then begin NaN_seq:=NaN_seq+1; NaN_in[" & n & "]:=NaN_seq; NaN_nm[NaN_seq]:='диапазон: " & p & "'; NaN_uz[NaN_seq]:=" & CStr(n) & "; NaN_tp[NaN_seq]:=1; end;" & vbCrLf
+        sb = sb & "  if (Not IsNan(ISTO_p[" & CStr(n) & "])) and (Abs(ISTO_p[" & CStr(n) & "])<=1e300) and (ISTO_p[" & CStr(n) & "]>1e-9) then begin" & vbCrLf
+        If CG4_Simple(p) Then sb = sb & "    " & p & ":=ISTO_p[" & CStr(n) & "];" & vbCrLf
+        sb = sb & "    aa2:=ISTO_p[" & CStr(n) & "];" & vbCrLf
+        sb = sb & "  end else begin" & vbCrLf
+        If CG4_Simple(p) Then sb = sb & "    " & p & ":=100;" & vbCrLf
+        sb = sb & "    aa2:=100;" & vbCrLf
+        sb = sb & "  end;" & vbCrLf
+        sb = sb & "  Log(' LH1 freeze: узел #" & CStr(n) & " - " & p & " вне диапазона LIM_P - last-good');  kerr:= -796;" & vbCrLf
+        sb = sb & "end;" & vbCrLf
+        totB = totB + 1
+
+        If Len(bCond_cg(m)) > 0 Then
+            sb = sb & "if (" & bCond_cg(m) & ") then NGFix[" & r & "]:=0 else NGFix[" & r & "]:=1;" & vbCrLf
+        Else
+            sb = sb & "if (" & fm & "*" & gt & "<100*e27) then NGFix[" & r & "]:=1 else NGFix[" & r & "]:=0;" & vbCrLf
+        End If
+        sb = sb & "NGP0[" & r & "]:=" & p & "+INT_PRT-1;  NGPmax[" & r & "]:=pmax;  NGPmin[" & r & "]:=pmin;  NGNmax[" & r & "]:=n_max;  NGaa05[" & r & "]:=aa05;  kerr:= 530000+" & n & ";" & vbCrLf
+        sb = sb & "if (NGFix[" & r & "]<1) then" & vbCrLf
+        sb = sb & "begin" & vbCrLf
+        sb = sb & "  NGj2:=1;  while (NGj2<=" & nSolver & ") do begin NGJ[" & r & ",NGj2]:=0; NGj2:=NGj2+1; end;" & vbCrLf
+        For j = 0 To cntL - 1
+            CG4_SplitLink CStr(links(j)), kk, ps, pn, nb
+            dpl = "dPL_r[" & n & "," & kk & "]"
+            sb = sb & "  V_r[" & kk & "]:=1;  if (aa2+" & dpl & "-" & nb & "<0) then V_r[" & kk & "]:=-1;" & vbCrLf
+            sb = sb & "  dP_r[" & kk & "]:=(1-" & ps & "*(1-" & pn & "))*Power(Abs(aa2+" & dpl & "-" & nb & "),0.5);  kerr:= 531000+" & n & "*10+" & kk & ";" & vbCrLf
+            termIn = termIn & IIf(Len(termIn) > 0, "+", "") & "U_ri[" & n & "," & kk & "]*dP_r[" & kk & "]*(1-V_r[" & kk & "])/2"
+            termOut = termOut & IIf(Len(termOut) > 0, "+", "") & "U_ri[" & n & "," & kk & "]*dP_r[" & kk & "]*(1+V_r[" & kk & "])/2"
+            termDiag = termDiag & IIf(Len(termDiag) > 0, "+", "") & "U_ri[" & n & "," & kk & "]*(1-" & ps & "*(1-" & pn & "))*0.5/Power(Abs(aa2+" & dpl & "-" & nb & ")+1e-6,0.5)"
+            termNg3 = termNg3 & IIf(Len(termNg3) > 0, "+", "") & "U_ri[" & n & "," & kk & "]"
+        Next j
+        sb = sb & "  S_in:=K_fff*(" & termIn & ");" & vbCrLf
+        sb = sb & "  S_out:=K_fff*(" & termOut & ");" & vbCrLf
+        sb = sb & "  aa1:=K_svod*(S_out-S_in)/K_fff;" & vbCrLf
+        sb = sb & "  NGR[" & r & "]:=-aa1;" & vbCrLf
+        sb = sb & "  NGJ[" & r & "," & r & "]:=" & termDiag & ";" & vbCrLf
+        For j = 0 To cntL - 1
+            CG4_SplitLink CStr(links(j)), kk, ps, pn, nb
+            dpl = "dPL_r[" & n & "," & kk & "]"
+            If colByNode_cg.Exists(nb) Then
+                colv = colByNode_cg(nb)
+                sb = sb & "  NGJ[" & r & "," & colv & "]:=NGJ[" & r & "," & colv & "]-U_ri[" & n & "," & kk & "]*(1-" & ps & "*(1-" & pn & "))*0.5/Power(Abs(aa2+" & dpl & "-" & nb & ")+1e-6,0.5);" & vbCrLf
+            End If
+        Next j
+        sb = sb & "  NGaa3[" & r & "]:=(e27+(" & termNg3 & "))*XX0[55]/10;  kerr:= 539000+" & n & ";" & vbCrLf
+        sb = sb & "end;" & vbCrLf
+    End If
+    CG4_BuildAssembly = sb
+End Function
+
+Private Sub CG4_SplitLink(ByVal s As String, ByRef kk As Long, ByRef ps As String, ByRef pn As String, ByRef nb As String)
+    Dim a As Variant
+    a = Split(s, "|")
+    kk = Val(a(0))
+    ps = a(1): pn = a(2): nb = a(3)
+End Sub
+
+' ============================================================================
+'  CG4-S: РЕШАТЕЛЬ НЬЮТОН (1 шаг за тик) + CG4-D: ПРИМЕНЕНИЯ
+' ============================================================================
+Private Sub CG4_SolverTail(ByVal f As Integer, ByVal nSolver As Long, ByVal hasLog As Boolean, ByVal csh As Boolean)
+    Dim n As String
+    n = CStr(nSolver)
+    If csh Then
+        Print #f, "// CG4-S: решатель Ньютон (1 шаг за тик), N=" & n
+        Print #f, "for (NGi2 = 1; NGi2 <= " & n & "; NGi2++)"
+        Print #f, "  if (NGFix[NGi2] > 0) {"
+        Print #f, "    for (NGj2 = 1; NGj2 <= " & n & "; NGj2++) { NGJ[NGi2,NGj2] = 0; NGJ[NGj2,NGi2] = 0; }"
+        Print #f, "    NGJ[NGi2,NGi2] = 1; NGR[NGi2] = 0;"
+        Print #f, "  }"
+        Print #f, "for (NGi2 = 1; NGi2 <= " & n & "; NGi2++) {"
+        Print #f, "  NGpiv = NGi2; NGmv = Math.Abs(NGJ[NGi2,NGi2]);"
+        Print #f, "  for (NGk2 = NGi2 + 1; NGk2 <= " & n & "; NGk2++) if (Math.Abs(NGJ[NGk2,NGi2]) > NGmv) { NGpiv = NGk2; NGmv = Math.Abs(NGJ[NGk2,NGi2]); }"
+        Print #f, "  if (NGpiv != NGi2) {"
+        Print #f, "    for (NGj2 = NGi2; NGj2 <= " & n & "; NGj2++) { NGtmp = NGJ[NGi2,NGj2]; NGJ[NGi2,NGj2] = NGJ[NGpiv,NGj2]; NGJ[NGpiv,NGj2] = NGtmp; }"
+        Print #f, "    NGtmp = NGR[NGi2]; NGR[NGi2] = NGR[NGpiv]; NGR[NGpiv] = NGtmp;"
+        Print #f, "  }"
+        Print #f, "  if (Math.Abs(NGJ[NGi2,NGi2]) < 1e-300) NGJ[NGi2,NGi2] = 1e-300;"
+        Print #f, "  for (NGk2 = NGi2 + 1; NGk2 <= " & n & "; NGk2++) {"
+        Print #f, "    NGm = NGJ[NGk2,NGi2]/NGJ[NGi2,NGi2];"
+        Print #f, "    if (NGm != 0) {"
+        Print #f, "      for (NGj2 = NGi2 + 1; NGj2 <= " & n & "; NGj2++) NGJ[NGk2,NGj2] = NGJ[NGk2,NGj2] - NGm*NGJ[NGi2,NGj2];"
+        Print #f, "      NGR[NGk2] = NGR[NGk2] - NGm*NGR[NGi2];"
+        Print #f, "    }"
+        Print #f, "  }"
+        Print #f, "}"
+        Print #f, "for (NGi2 = " & n & "; NGi2 >= 1; NGi2--) {"
+        Print #f, "  NGs = NGR[NGi2];"
+        Print #f, "  for (NGj2 = NGi2 + 1; NGj2 <= " & n & "; NGj2++) NGs = NGs - NGJ[NGi2,NGj2]*NGX[NGj2];"
+        Print #f, "  NGX[NGi2] = NGs/NGJ[NGi2,NGi2];"
+        Print #f, "}"
+        Print #f, "// релаксация 0.9 + кламп окна (семантика pmax/pmin метода 2)"
+        Print #f, "for (NGi2 = 1; NGi2 <= " & n & "; NGi2++) {"
+        Print #f, "  if (Krelax < 1) Krelax = 1;"
+        Print #f, "  NGX[NGi2] = NGP0[NGi2] + NGX[NGi2]/Krelax;"
+        Print #f, "  if (NGX[NGi2] > NGPmax[NGi2]) NGX[NGi2] = NGPmax[NGi2];"
+        Print #f, "  if (NGX[NGi2] < NGPmin[NGi2]) NGX[NGi2] = NGPmin[NGi2];"
+        Print #f, "}"
+        If hasLog Then Print #f, "Log(""markN2 solve N=" & n & " iter=1 rel=0.9"");"
+    Else
+        Print #f, "// CG4-S: решатель Ньютон (1 шаг за тик), N=" & n
+        Print #f, "NGi2:=1;"
+        Print #f, "while (NGi2<=" & n & ") do begin"
+        Print #f, "  if (NGFix[NGi2]>0) then begin"
+        Print #f, "    NGj2:=1;"
+        Print #f, "    while (NGj2<=" & n & ") do begin NGJ[NGi2,NGj2]:=0; NGJ[NGj2,NGi2]:=0; NGj2:=NGj2+1; end;"
+        Print #f, "    NGJ[NGi2,NGi2]:=1; NGR[NGi2]:=0;"
+        Print #f, "  end;"
+        Print #f, "  NGi2:=NGi2+1;"
+        Print #f, "end;"
+        Print #f, "NGi2:=1;"
+        Print #f, "while (NGi2<=" & n & ") do begin"
+        Print #f, "  NGpiv:=NGi2; NGmv:=Abs(NGJ[NGi2,NGi2]);"
+        Print #f, "  NGk2:=NGi2+1;"
+        Print #f, "  while (NGk2<=" & n & ") do begin"
+        Print #f, "    if (Abs(NGJ[NGk2,NGi2])>NGmv) then begin NGpiv:=NGk2; NGmv:=Abs(NGJ[NGk2,NGi2]); end;"
+        Print #f, "    NGk2:=NGk2+1;"
+        Print #f, "  end;"
+        Print #f, "  if (NGpiv<>NGi2) then begin"
+        Print #f, "    NGj2:=NGi2;"
+        Print #f, "    while (NGj2<=" & n & ") do begin NGtmp:=NGJ[NGi2,NGj2]; NGJ[NGi2,NGj2]:=NGJ[NGpiv,NGj2]; NGJ[NGpiv,NGj2]:=NGtmp; NGj2:=NGj2+1; end;"
+        Print #f, "    NGtmp:=NGR[NGi2]; NGR[NGi2]:=NGR[NGpiv]; NGR[NGpiv]:=NGtmp;"
+        Print #f, "  end;"
+        Print #f, "  if (Abs(NGJ[NGi2,NGi2])<1e-300) then NGJ[NGi2,NGi2]:=1e-300;"
+        Print #f, "  NGk2:=NGi2+1;"
+        Print #f, "  while (NGk2<=" & n & ") do begin"
+        Print #f, "    NGm:=NGJ[NGk2,NGi2]/NGJ[NGi2,NGi2];"
+        Print #f, "    if (NGm<>0) then begin"
+        Print #f, "      NGj2:=NGi2+1;"
+        Print #f, "      while (NGj2<=" & n & ") do begin NGJ[NGk2,NGj2]:=NGJ[NGk2,NGj2]-NGm*NGJ[NGi2,NGj2]; NGj2:=NGj2+1; end;"
+        Print #f, "      NGR[NGk2]:=NGR[NGk2]-NGm*NGR[NGi2];"
+        Print #f, "    end;"
+        Print #f, "    NGk2:=NGk2+1;"
+        Print #f, "  end;"
+        Print #f, "  NGi2:=NGi2+1;"
+        Print #f, "end;"
+        Print #f, "NGi2:=" & n & ";"
+        Print #f, "while (NGi2>=1) do begin"
+        Print #f, "  NGs:=NGR[NGi2];"
+        Print #f, "  NGj2:=NGi2+1;"
+        Print #f, "  while (NGj2<=" & n & ") do begin NGs:=NGs-NGJ[NGi2,NGj2]*NGX[NGj2]; NGj2:=NGj2+1; end;"
+        Print #f, "  NGX[NGi2]:=NGs/NGJ[NGi2,NGi2];"
+        Print #f, "  NGi2:=NGi2-1;"
+        Print #f, "end;"
+        Print #f, "// релаксация 0.9 + кламп окна (семантика pmax/pmin метода 2)"
+        Print #f, "NGi2:=1;"
+        Print #f, "while (NGi2<=" & n & ") do begin"
+        Print #f, "  if (Krelax<1) then Krelax:=1;"
+        Print #f, "  NGX[NGi2]:=NGP0[NGi2]+NGX[NGi2]/Krelax;"
+        Print #f, "  if (NGX[NGi2]>NGPmax[NGi2]) then NGX[NGi2]:=NGPmax[NGi2];"
+        Print #f, "  if (NGX[NGi2]<NGPmin[NGi2]) then NGX[NGi2]:=NGPmin[NGi2];"
+        Print #f, "  NGi2:=NGi2+1;"
+        Print #f, "end;"
+        If hasLog Then Print #f, "Log('markN2 solve N=" & n & " iter=1 rel=0.9');"
+    End If
+End Sub
+
+Private Sub CG4_Apply(ByVal f As Integer, ByVal m As Long, ByVal r As Long, ByVal csh As Boolean)
+    Dim p As String, n As Long
+    Dim links As Variant, cntL As Long, j As Long
+    Dim kk As Long, ps As String, pn As String, nb As String
+    Dim dpl As String
+    Dim cutIdx As Long, i As Long
+
+    p = bP_cg(m): n = bN_cg(m)
+    If csh Then
+        Print #f, "// CG4-D: применение для " & p & " (#" & n & ")"
+        Print #f, "aa2 = NGX[" & r & "];  pmax = NGPmax[" & r & "];  pmin = NGPmin[" & r & "];  n_max = NGNmax[" & r & "];  aa05 = NGaa05[" & r & "];  kerr = 540000 + " & n & ";"
+        links = Split(bLinks_cg(m), ";")
+        For j = 0 To UBound(links)
+            CG4_SplitLink CStr(links(j)), kk, ps, pn, nb
+            dpl = "dPL_r[" & n & "," & kk & "]"
+            Print #f, "V_r[" & kk & "] = 1;  if (aa2 + " & dpl & " - " & nb & " < 0) V_r[" & kk & "] = -1;"
+        Next j
+    Else
+        Print #f, "// CG4-D: применение для " & p & " (#" & n & ")"
+        Print #f, "aa2:=NGX[" & r & "];  pmax:=NGPmax[" & r & "];  pmin:=NGPmin[" & r & "];  n_max:=NGNmax[" & r & "];  aa05:=NGaa05[" & r & "];  kerr:= 540000+" & n & ";"
+        links = Split(bLinks_cg(m), ";")
+        For j = 0 To UBound(links)
+            CG4_SplitLink CStr(links(j)), kk, ps, pn, nb
+            dpl = "dPL_r[" & n & "," & kk & "]"
+            Print #f, "V_r[" & kk & "]:=1;  if (aa2+" & dpl & "-" & nb & "<0) then V_r[" & kk & "]:=-1;"
+        Next j
+    End If
+    ' хвост: до ПЕРВОГО закрывающего end НА ГЛУБИНЕ 0 (v2j: в м2+LH1-входе в хвостах
+    ' живут v20-стражи с begin..end - резать можно только end самой математики блока)
+    Dim dpth As Long
+    dpth = 0
+    cutIdx = bTail_cg(m).Count + 1
+    For i = 1 To bTail_cg(m).Count
+        If dpth = 0 And Left$(Trim$(bTail_cg(m)(i)), 3) = "end" Then cutIdx = i: Exit For
+        dpth = dpth + CG4_CountBeginEnd2(bTail_cg(m)(i))
+    Next i
+    For i = 1 To cutIdx - 1
+        Print #f, bTail_cg(m)(i)
+    Next i
+End Sub
+
+' ============================================================================
+'  ДЕКЛАРАЦИИ NG И NaN-БЛОК «НУЛЕВОГО ПАЦИЕНТА»
+' ============================================================================
+Private Sub CG4_NgDecls(ByVal f As Integer, ByVal n As Long, ByVal csh As Boolean)
+    If csh Then
+        Print #f, "// CG4_OWNED_DECLS: декларации Ньютон-решателя (вставлено CG4_Convert, VBA)"
+        Print #f, "double[,] NGJ = new double[" & n + 1 & "," & n + 1 & "];"
+        Print #f, "double[] NGR = new double[" & n + 1 & "], NGX = new double[" & n + 1 & "], NGP0 = new double[" & n + 1 & "], NGPmax = new double[" & n + 1 & "], NGPmin = new double[" & n + 1 & "], NGNmax = new double[" & n + 1 & "], NGaa05 = new double[" & n + 1 & "], NGaa3 = new double[" & n + 1 & "];"
+        Print #f, "int[] NGFix = new int[" & n + 1 & "];"
+        Print #f, "int NGi2, NGj2, NGk2, NGpiv; double NGmv, NGm, NGs, NGtmp;"
+        Print #f, "double Krelax;"
+    Else
+        Print #f, "// CG4_OWNED_DECLS: декларации Ньютон-решателя (вставлено CG4_Convert, VBA)"
+        Print #f, "NGJ: array[1.." & n & ",1.." & n & "] of Double;"
+        Print #f, "NGR, NGX, NGP0, NGPmax, NGPmin, NGNmax, NGaa05, NGaa3: array[1.." & n & "] of Double;"
+        Print #f, "NGFix: array[1.." & n & "] of Integer;"
+        Print #f, "NGi2, NGj2, NGk2, NGpiv: Integer; NGmv, NGm, NGs, NGtmp: Double;"
+        Print #f, "Krelax: Double;"
+    End If
+End Sub
+
+' --- v2: ключи IN_OFF/IN_ON в начало WorkIn (после try).
+' Ячейки читаем НАПРЯМУЮ (main.bph.param9/param10.ValS), как FIRE_1/K_tau= в _0.WorkAdd, -
+' срабатывает на ПЕРВОМ скане, т.к. блок лога (WorkLog1..BU) вызывается ПОСЛЕ In.
+Private Sub CG4_InKeys(ByVal f As Integer, ByVal csh As Boolean)
+    Dim sp As Variant, i As Long
+    If csh Then
+            sp = Array("// LH1-IN: ключи IN_OFF/IN_ON (ячейки лога 9/10) - читаем напрямую, чтобы сработать на первом скане", _
+            "IN_str=main.bph.param9.ValS.replace("" "","""");", _
+            "if (IN_str==""IN_OFF"") INOFF=1;", _
+            "if (IN_str==""IN_ON"") INOFF=0;", _
+            "IN_str=main.bph.param10.ValS.replace("" "","""");", _
+            "if (IN_str==""IN_OFF"") INOFF=1;", _
+            "if (IN_str==""IN_ON"") INOFF=0;", _
+            "if (INOFF!=INOFF_prev) {", _
+            "  if (INOFF==1) Log("" IN: In-данные заказчика ОТКЛЮЧЕНЫ (IN_OFF) - пресеты нашей математики, арматуры активны"");", _
+            "  if (INOFF==0) Log("" IN: In-данные заказчика ВКЛЮЧЕНЫ (IN_ON)"");", _
+            "  INOFF_prev=INOFF;", _
+            "}")
+    Else
+            sp = Array("// LH1-IN: ключи IN_OFF/IN_ON (ячейки лога 9/10) - читаем напрямую, чтобы сработать на первом скане", _
+            "IN_str:=main.bph.param9.ValS.replace(' ','');", _
+            "if (IN_str='IN_OFF') then INOFF:=1;", _
+            "if (IN_str='IN_ON') then INOFF:=0;", _
+            "IN_str:=main.bph.param10.ValS.replace(' ','');", _
+            "if (IN_str='IN_OFF') then INOFF:=1;", _
+            "if (IN_str='IN_ON') then INOFF:=0;", _
+            "if (INOFF<>INOFF_prev) then begin", _
+            "  if (INOFF=1) then begin Log(' IN: In-данные заказчика ОТКЛЮЧЕНЫ (IN_OFF) - пресеты нашей математики, арматуры активны'); kerr:= -800; end;", _
+            "  if (INOFF=0) then begin Log(' IN: In-данные заказчика ВКЛЮЧЕНЫ (IN_ON)'); kerr:= -801; end;", _
+            "  INOFF_prev:=INOFF;", _
+            "end;", _
+            "kerr:= -804;")
+    End If
+    For i = LBound(sp) To UBound(sp)
+        Print #f, sp(i)
+    Next i
+End Sub
+
+' --- v2: классификация In-строки WorkIn (как в LH1 v7/v8): арматура KOD 02 и KOD 05-08;
+' гейт KOD 01,03,04,09,12,13,14,17,18 с kerr>=250006; KOD 00 - не гейтится.
+' Возвращает 1=гейт (gated=строка-гейт), 2=арматура, 0=прочее.
+Private Function CG4_TryGate(ByVal ln As String, ByVal csh As Boolean, ByRef gated As String) As Long
+    Dim p1 As Long, p2 As Long, p3 As Long, kod As Long, ke As Long
+    CG4_TryGate = 0: gated = ""
+    p1 = InStr(ln, "kerr:=")
+    If p1 <= 0 Then Exit Function
+    p2 = InStr(p1, ln, "//")
+    If p2 <= 0 Then Exit Function
+    p3 = InStr(p2, ln, "KOD:")
+    If p3 <= 0 Then Exit Function
+    kod = Val(Mid$(ln, p3 + 4, 3))
+    ke = Val(Mid$(ln, p1 + 6, 8))
+    If kod = 2 Or (kod >= 5 And kod <= 8) Then CG4_TryGate = 2: Exit Function
+    If kod < 1 Or kod > 18 Then Exit Function
+    If ke < 250006 Then Exit Function
+    If csh Then
+        gated = "if (INOFF==0) " & Trim$(ln)
+    Else
+        gated = "if (INOFF=0) then " & Trim$(ln)
+    End If
+    CG4_TryGate = 1
+End Function
+
+' --- v2: IN-гейты в HEALTH-юнит (WorkLogBU) после «У И: n=», перед NaN-сканом.
+Private Sub CG4_InLogGates(ByVal f As Integer, ByVal csh As Boolean)
+    Dim sp As Variant, i As Long
+    If csh Then
+            sp = Array("// LH1-IN: команды IN_OFF/IN_ON из лог-ячеек 9/10 (принцип HEALTH)", _
+            "if (LOG0[9]==""IN_OFF"") INOFF=1;", _
+            "if (LOG0[10]==""IN_OFF"") INOFF=1;", _
+            "if (LOG0[9]==""IN_ON"") INOFF=0;", _
+            "if (LOG0[10]==""IN_ON"") INOFF=0;")
+    Else
+            sp = Array("// LH1-IN: команды IN_OFF/IN_ON из лог-ячеек 9/10 (принцип HEALTH)", _
+            "if (LOG0[9]='IN_OFF') then INOFF:=1;  kerr:= -802;", _
+            "if (LOG0[10]='IN_OFF') then INOFF:=1;  kerr:= -803;", _
+            "if (LOG0[9]='IN_ON') then INOFF:=0;  kerr:= -804;", _
+            "if (LOG0[10]='IN_ON') then INOFF:=0;  kerr:= -805;")
+    End If
+    For i = LBound(sp) To UBound(sp)
+        Print #f, sp(i)
+    Next i
+End Sub
+
+Private Sub CG4_NanDecls(ByVal f As Integer, ByVal SZ As Long, ByVal csh As Boolean, ByVal doNaN As Boolean, ByVal doIN As Boolean)
+    ' К3 v2j: декларации НОВАЯ СХЕМА LH1 v20 (только давления) + IN-поля (если нужны)
+    Dim sp As Variant, i As Long
+    If csh Then
+        If doNaN Then
+            sp = Array("int[] NaN_t = new int[#SZ1#]; // LH1 v20: номер события по хвосту ISTO_p (0=чист)", _
+            "int[] NaN_in = new int[#SZ1#]; // LH1 v20: номер события на входе узла (0=чист)", _
+            "int NaN_seq; // LH1 v20: порядковый номер NaN/бред-события (первый = 1)", _
+            "int NaN_call, NaN_cnt, NaN_i; // LH1 v20: счётчики скана", _
+            "string[] NaN_nm = new string[1001]; // LH1 v20: имена виновников (по номеру события)", _
+            "int[] NaN_uz = new int[1001]; // LH1 v20: узел события", _
+            "int[] NaN_tp = new int[1001]; // LH1 v20: тип: 1=вход 2=хвост", _
+            "string NaN_str = "";")
+        Else
+            sp = Array("int INOFF, INOFF_prev; // LH1-IN: 1=In-данные заказчика отключены (IN_OFF), 0=активны (IN_ON)", _
+            "string IN_str = ""; // LH1-IN")
+        End If
+        For i = LBound(sp) To UBound(sp)
+            Print #f, Replace(Replace(sp(i), "#SZ#", CStr(SZ)), "#SZ1#", CStr(SZ + 1))
+        Next i
+        If doNaN And doIN Then
+            Print #f, "int INOFF, INOFF_prev; // LH1-IN: 1=In-данные заказчика отключены (IN_OFF), 0=активны (IN_ON)"
+            Print #f, "string IN_str = ""; // LH1-IN"
+        End If
+    Else
+        If doNaN Then
+            sp = Array("NaN_t: array[1.. #SZ#] of integer; // LH1 v20: номер события по хвосту ISTO_p (0=чист)", _
+            "NaN_in: array[1.. #SZ#] of integer; // LH1 v20: номер события на входе узла (0=чист)", _
+            "NaN_seq: integer; // LH1 v20: порядковый номер NaN/бред-события (первый = 1)", _
+            "NaN_call, NaN_cnt, NaN_i: integer; // LH1 v20: счётчики скана", _
+            "NaN_nm: array[1..1000] of string; // LH1 v20: имена виновников (по номеру события)", _
+            "NaN_uz: array[1..1000] of integer; // LH1 v20: узел события", _
+            "NaN_tp: array[1..1000] of integer; // LH1 v20: тип: 1=вход 2=хвост", _
+            "NaN_str: string; // LH1 v20")
+        Else
+            sp = Array("INOFF, INOFF_prev: integer; // LH1-IN: 1=In-данные заказчика отключены (IN_OFF), 0=активны (IN_ON)", _
+            "IN_str: string; // LH1-IN")
+        End If
+        For i = LBound(sp) To UBound(sp)
+            Print #f, Replace(sp(i), "#SZ#", CStr(SZ))
+        Next i
+        If doNaN And doIN Then
+            Print #f, "INOFF, INOFF_prev: integer; // LH1-IN: 1=In-данные заказчика отключены (IN_OFF), 0=активны (IN_ON)"
+            Print #f, "IN_str: string; // LH1-IN"
+        End If
+    End If
+End Sub
+
+
+Private Sub CG4_NanScan(ByVal f As Integer, ByVal SZ As Long, ByVal pasStyle As Boolean)
+    ' К3 v2j: HEALTH-скан НОВАЯ СХЕМА LH1 v20 (только давления): построчные виновники
+    ' + контроль зеркал ISTO_p; kerr -790..-794
+    Dim sp As Collection, i As Long
+    Dim szv As String
+    szv = CStr(SZ)
+    Set sp = New Collection
+    If pasStyle Then
+        sp.Add "// LH1-NaN-scan start (v20, только давления)"
+        sp.Add "if (NaN_seq>0) then begin"
+        sp.Add "  Log(' LH1 NaN-виновники (давления): всего='+cstrf(NaN_seq,0)+' - NaN/бред гашены');  kerr:= -790;"
+        sp.Add "  NaN_i:=1;"
+        sp.Add "  while (NaN_i<=NaN_seq) do begin"
+        sp.Add "    if (NaN_i<31) then begin"
+        sp.Add "      NaN_str:='';"
+        sp.Add "      if (NaN_tp[NaN_i]=1) then NaN_str:='вход';"
+        sp.Add "      if (NaN_tp[NaN_i]=2) then NaN_str:='хвост';"
+        sp.Add "      if (NaN_uz[NaN_i]>0) then begin Log(' LH1 виновник №'+cstrf(NaN_i,0)+': узел #'+cstrf(NaN_uz[NaN_i],0)+' - '+NaN_nm[NaN_i]+' ('+NaN_str+')');  kerr:= -791; end;"
+        sp.Add "      if (NaN_uz[NaN_i]=0) then begin Log(' LH1 виновник №'+cstrf(NaN_i,0)+': граница - '+NaN_nm[NaN_i]+' ('+NaN_str+')');  kerr:= -791; end;"
+        sp.Add "    end else begin"
+        sp.Add "      if (NaN_i=31) then begin Log(' LH1 ... всего '+cstrf(NaN_seq,0)+' событий - показаны первые 30');  kerr:= -792; end;"
+        sp.Add "    end;"
+        sp.Add "    NaN_i:=NaN_i+1;"
+        sp.Add "  end;"
+        sp.Add "end;"
+        sp.Add "NaN_cnt:=0;"
+        sp.Add "NaN_i:=1;"
+        sp.Add "while (NaN_i<=" & szv & ") do begin"
+        sp.Add "  if IsNan(ISTO_p[NaN_i]) or (Abs(ISTO_p[NaN_i])>1e300) then NaN_cnt:=NaN_cnt+1;"
+        sp.Add "  NaN_i:=NaN_i+1;"
+        sp.Add "end;"
+        sp.Add "if (NaN_cnt>0) then begin Log(' LH1 ВНИМАНИЕ: NaN/бред в зеркалах ISTO_p: '+cstrf(NaN_cnt,0)+' (прорвалось мимо стражей)');  kerr:= -793; end;"
+        sp.Add "if (NaN_seq=0) and (NaN_cnt=0) then begin Log(' LH1 NaN-скан: чисто - NaN/бред не обнаружены (скан #'+cstrf(NaN_call,0)+')');  kerr:= -794; end;"
+        sp.Add "NaN_call:=NaN_call+1;"
+        sp.Add "// LH1-NaN-scan end"
+    Else
+        sp.Add "// LH1-NaN-scan start (v20, только давления)"
+        sp.Add "if (NaN_seq>0)"
+        sp.Add "{"
+        sp.Add "  Log("" LH1 NaN-виновники (давления): всего=""+cstrf(NaN_seq,0)+"" - NaN/бред гашены"");"
+        sp.Add "  for (NaN_i=1; NaN_i<=NaN_seq; NaN_i++)"
+        sp.Add "  {"
+        sp.Add "    if (NaN_i<31)"
+        sp.Add "    {"
+        sp.Add "      NaN_str="""";"
+        sp.Add "      if (NaN_tp[NaN_i]==1) NaN_str=""вход"";"
+        sp.Add "      if (NaN_tp[NaN_i]==2) NaN_str=""хвост"";"
+        sp.Add "      if (NaN_uz[NaN_i]>0) Log("" LH1 виновник №""+cstrf(NaN_i,0)+"": узел #""+cstrf(NaN_uz[NaN_i],0)+"" - ""+NaN_nm[NaN_i]+"" (""+NaN_str+"")"");"
+        sp.Add "      else Log("" LH1 виновник №""+cstrf(NaN_i,0)+"": граница - ""+NaN_nm[NaN_i]+"" (""+NaN_str+"")"");"
+        sp.Add "    }"
+        sp.Add "    else"
+        sp.Add "    {"
+        sp.Add "      if (NaN_i==31) Log("" LH1 ... всего ""+cstrf(NaN_seq,0)+"" событий - показаны первые 30"");"
+        sp.Add "    }"
+        sp.Add "  }"
+        sp.Add "}"
+        sp.Add "NaN_cnt=0;"
+        sp.Add "for (NaN_i=1; NaN_i<=" & szv & "; NaN_i++)"
+        sp.Add "{"
+        sp.Add "  if (double.IsNaN(ISTO_p[NaN_i]) || Math.Abs(ISTO_p[NaN_i])>1e300) NaN_cnt++;"
+        sp.Add "}"
+        sp.Add "if (NaN_cnt>0) Log("" LH1 ВНИМАНИЕ: NaN/бред в зеркалах ISTO_p: ""+cstrf(NaN_cnt,0)+"" (прорвалось мимо стражей)"");"
+        sp.Add "if ((NaN_seq==0) && (NaN_cnt==0)) Log("" LH1 NaN-скан: чисто - NaN/бред не обнаружены (скан #""+cstrf(NaN_call,0)+"")"");"
+        sp.Add "NaN_call++;"
+        sp.Add "// LH1-NaN-scan end"
+    End If
+    For i = 1 To sp.Count
+        Print #f, sp(i)
+    Next i
+End Sub
+
+
+' --- LH1-стражи на строке-присвоении (вне заменённых сборок) ---
+Private Sub CG4_LineGuards(ByVal f As Integer, ByVal ln As String, ByVal curN As Long, ByVal SZ As Long, _
+                           ByRef totB As Long, ByRef totL As Long, ByRef totH As Long)
+    ' К3 v2j: LH1 v20 (только давления): страж входа (aa2) и хвоста (ISTO_p) на
+    ' нетронутых местах; связь dP_r НЕ стражится (решение владельца)
+    Dim t As String, nm As String
+    Dim p1 As Long, p2 As Long, nn As Long
+    t = Trim$(ln)
+    If Len(t) = 0 Then Exit Sub
+
+    If InStr(t, "aa2") = 1 And InStr(ln, "INT_PRT-1") > 0 And curN > 0 And curN <= SZ Then     ' v2n: запись NaN_in[curN] при curN>SZ шла ЗА ГРАНИЦУ массива (порча памяти)
+        nm = Left$(ln, InStr(ln, "INT_PRT-1") - 1)
+        p2 = InStrRev(nm, "+")
+        If p2 > 0 Then nm = Left$(nm, p2 - 1)
+        p2 = InStrRev(nm, "=")
+        If p2 > 0 Then nm = Trim$(Mid$(nm, p2 + 1))
+        If Len(nm) > 0 Then
+            Print #f, CG4_GuardIn(curN, nm)
+            totB = totB + 1
+        End If
+
+    ElseIf InStr(t, "ISTO_p[") = 1 Then
+        p1 = InStr(ln, "ISTO_p[") + 7
+        p2 = InStr(p1, ln, "]")
+        nn = Val(Trim$(Mid$(ln, p1, p2 - p1)))
+        p1 = InStr(p2, ln, "=")
+        nm = Trim$(Mid$(ln, p1 + 1))
+        p2 = InStr(nm, ";")
+        If p2 > 0 Then nm = Left$(nm, p2 - 1)
+        nm = Trim$(nm)
+        If nn > 0 And nn <= SZ And Len(nm) > 0 And (Mid$(nm, 1, 1) < "0" Or Mid$(nm, 1, 1) > "9") Then
+            Print #f, CG4_GuardTail(nn, nm)
+            totH = totH + 1
+        End If
+    End If
+End Sub
+
+' --- простой идентификатор (можно ли присваивать: буквы/цифры/_) ---
+Private Function CG4_Simple(ByVal nm As String) As Boolean
+    Dim i As Long, c As String
+    CG4_Simple = False
+    If Len(nm) = 0 Then Exit Function
+    For i = 1 To Len(nm)
+        c = Mid(nm, i, 1)
+        If Not ((c >= "a" And c <= "z") Or (c >= "A" And c <= "Z") Or (c >= "0" And c <= "9") Or c = "_") Then Exit Function
+    Next i
+    CG4_Simple = True
+End Function
+
+
+' --- LH1 v21/CG4 v3: страж входа (нетронутые места) - активный, РЕФОРМА ГАШЕНИЙ ---
+Private Function CG4_GuardIn(ByVal n As Long, ByVal nm As String) As String
+    Dim r As String
+    r = "if IsNan(" & nm & ") or (Abs(" & nm & ")>1e300) then begin" & vbCrLf
+    r = r & "  if (NaN_in[" & n & "]=0) and (NaN_seq<1000) then begin NaN_seq:=NaN_seq+1; NaN_in[" & n & "]:=NaN_seq; NaN_nm[NaN_seq]:='" & nm & "'; NaN_uz[NaN_seq]:=" & CStr(n) & "; NaN_tp[NaN_seq]:=1; end;" & vbCrLf
+    r = r & "  if (Not IsNan(ISTO_p[" & CStr(n) & "])) and (Abs(ISTO_p[" & CStr(n) & "])<=1e300) and (ISTO_p[" & CStr(n) & "]>1e-9) then begin" & vbCrLf
+    If CG4_Simple(nm) Then r = r & "    " & nm & ":=ISTO_p[" & CStr(n) & "];" & vbCrLf
+    r = r & "    aa2:=ISTO_p[" & CStr(n) & "];" & vbCrLf
+    r = r & "  end else begin" & vbCrLf
+    If CG4_Simple(nm) Then r = r & "    " & nm & ":=100;" & vbCrLf
+    r = r & "    aa2:=100;" & vbCrLf
+    r = r & "  end;" & vbCrLf
+    r = r & "  Log(' LH1 freeze: узел #" & CStr(n) & " - " & nm & " NaN/бред - last-good');  kerr:= -795;" & vbCrLf
+    r = r & "end else if ((LIM_P_max>0) and (((" & nm & ")<LIM_P_min) or ((" & nm & ")>LIM_P_max))) then begin" & vbCrLf
+    r = r & "  if (NaN_in[" & n & "]=0) and (NaN_seq<1000) then begin NaN_seq:=NaN_seq+1; NaN_in[" & n & "]:=NaN_seq; NaN_nm[NaN_seq]:='диапазон: " & nm & "'; NaN_uz[NaN_seq]:=" & CStr(n) & "; NaN_tp[NaN_seq]:=1; end;" & vbCrLf
+    r = r & "  if (Not IsNan(ISTO_p[" & CStr(n) & "])) and (Abs(ISTO_p[" & CStr(n) & "])<=1e300) and (ISTO_p[" & CStr(n) & "]>1e-9) then begin" & vbCrLf
+    If CG4_Simple(nm) Then r = r & "    " & nm & ":=ISTO_p[" & CStr(n) & "];" & vbCrLf
+    r = r & "    aa2:=ISTO_p[" & CStr(n) & "];" & vbCrLf
+    r = r & "  end else begin" & vbCrLf
+    If CG4_Simple(nm) Then r = r & "    " & nm & ":=100;" & vbCrLf
+    r = r & "    aa2:=100;" & vbCrLf
+    r = r & "  end;" & vbCrLf
+    r = r & "  Log(' LH1 freeze: узел #" & CStr(n) & " - " & nm & " вне диапазона LIM_P - last-good');  kerr:= -796;" & vbCrLf
+    r = r & "end;"
+    CG4_GuardIn = r
+End Function
+
+
+' --- LH1 v21/CG4 v3: страж хвоста зеркал - активный, ЗАМОРОЗКА (зеркало НЕ обновляется бредом) ---
+Private Function CG4_GuardTail(ByVal n As Long, ByVal nm As String) As String
+    Dim r As String
+    r = "if IsNan(" & nm & ") or (Abs(" & nm & ")>1e300) then begin" & vbCrLf
+    r = r & "  if (NaN_t[" & n & "]=0) and (NaN_seq<1000) then begin NaN_seq:=NaN_seq+1; NaN_t[" & n & "]:=NaN_seq; NaN_nm[NaN_seq]:='" & nm & "'; NaN_uz[NaN_seq]:=" & CStr(n) & "; NaN_tp[NaN_seq]:=2; end;" & vbCrLf
+    r = r & "  if (Not IsNan(ISTO_p[" & CStr(n) & "])) and (Abs(ISTO_p[" & CStr(n) & "])<=1e300) and (ISTO_p[" & CStr(n) & "]>1e-9) then begin" & vbCrLf
+    If CG4_Simple(nm) Then r = r & "    " & nm & ":=ISTO_p[" & CStr(n) & "];" & vbCrLf
+    r = r & "    Log(' LH1 freeze: узел #" & CStr(n) & " - " & nm & " NaN/бред - зеркало НЕ обновлено');  kerr:= -797;" & vbCrLf
+    r = r & "  end else begin" & vbCrLf
+    If CG4_Simple(nm) Then r = r & "    " & nm & ":=100;" & vbCrLf
+    r = r & "    ISTO_p[" & CStr(n) & "]:=100;" & vbCrLf
+    r = r & "  end;" & vbCrLf
+    r = r & "end else if ((LIM_P_max>0) and (((" & nm & ")<LIM_P_min) or ((" & nm & ")>LIM_P_max))) then begin" & vbCrLf
+    r = r & "  if (NaN_t[" & n & "]=0) and (NaN_seq<1000) then begin NaN_seq:=NaN_seq+1; NaN_t[" & n & "]:=NaN_seq; NaN_nm[NaN_seq]:='диапазон: " & nm & "'; NaN_uz[NaN_seq]:=" & CStr(n) & "; NaN_tp[NaN_seq]:=2; end;" & vbCrLf
+    r = r & "  if (Not IsNan(ISTO_p[" & CStr(n) & "])) and (Abs(ISTO_p[" & CStr(n) & "])<=1e300) and (ISTO_p[" & CStr(n) & "]>1e-9) then begin" & vbCrLf
+    If CG4_Simple(nm) Then r = r & "    " & nm & ":=ISTO_p[" & CStr(n) & "];" & vbCrLf
+    r = r & "    Log(' LH1 freeze: узел #" & CStr(n) & " - " & nm & " вне диапазона - зеркало НЕ обновлено');  kerr:= -798;" & vbCrLf
+    r = r & "  end else begin" & vbCrLf
+    If CG4_Simple(nm) Then r = r & "    " & nm & ":=100;" & vbCrLf
+    r = r & "    ISTO_p[" & CStr(n) & "]:=100;" & vbCrLf
+    r = r & "  end;" & vbCrLf
+    r = r & "end;"
+    CG4_GuardTail = r
+End Function
+'=====END=====
+
+
+
+
+
+
+'============================================================
+

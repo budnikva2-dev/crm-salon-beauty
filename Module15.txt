@@ -1,0 +1,1349 @@
+Option Explicit
+'=====================================================================
+' LH3 CONVERT v4.1 (22.11.2026) - исправленная сборка v4
+' База правил та же: стражи v21 + A1/A2 + Ф4 + весь перечень м2.5.
+' Исправлены K1..K20 (см. реестр в чате). м2 НЕ ТРОГАЕТСЯ, CG4 вне обсуждения.
+' Приёмка: FPC 3.2.2 / PascalABC.NET. C#-стиль поддержан только в стражах.
+'=====================================================================
+
+Private csh1 As Boolean
+Private RXC As Object            ' кэш скомпилированных RegExp (K19)
+
+'------------------------- RegExp-инфраструктура ---------------------
+Private Function RX(ByVal pat As String, ByVal glob As Boolean) As Object
+    Dim k As String, re As Object
+    If RXC Is Nothing Then Set RXC = CreateObject("Scripting.Dictionary")
+    k = IIf(glob, "G|", "S|") & pat
+    If Not RXC.Exists(k) Then
+        Set re = CreateObject("VBScript.RegExp")
+        re.Global = glob: re.MultiLine = True: re.IgnoreCase = False
+        re.Pattern = pat
+        RXC.Add k, re
+    End If
+    Set RX = RXC(k)
+End Function
+
+Private Function L4_M(ByVal s As String, ByVal pat As String) As Boolean
+    L4_M = RX(pat, False).Test(s)
+End Function
+
+Private Function L4_SM(ByVal s As String, ByVal pat As String, ByVal idx As Long) As String
+    Dim mc As Object
+    Set mc = RX(pat, False).Execute(s)
+    If mc.Count > 0 Then L4_SM = mc(0).SubMatches(idx) Else L4_SM = ""
+End Function
+
+Private Function L4_Re(ByVal s As String, ByVal pat As String, ByVal rep As String, ByRef nCnt As Long) As String
+    Dim mc As Object
+    Set mc = RX(pat, True).Execute(s)
+    nCnt = mc.Count
+    If nCnt > 0 Then L4_Re = RX(pat, True).Replace(s, rep) Else L4_Re = s
+End Function
+
+'------------------------- строковые помощники -----------------------
+Private Function L1_Starts(ByVal s As String, ByVal pre As String) As Boolean
+    L1_Starts = (Left$(s, Len(pre)) = pre)
+End Function
+
+Private Function L1_Idc(ByVal c As String) As Boolean
+    L1_Idc = ((c >= "a" And c <= "z") Or (c >= "A" And c <= "Z") Or (c >= "0" And c <= "9") Or c = "_")
+End Function
+
+Private Function L1_IsNum(ByVal s As String, ByRef v As Double) As Boolean
+    L1_IsNum = False
+    If Len(s) = 0 Then Exit Function
+    If L4_M(s, "^[+-]?\d+(\.\d+)?$") Then
+        v = Val(s): L1_IsNum = True
+    End If
+End Function
+
+' код до "//" (вне строк) и хвост-комментарий
+Private Sub L1_SplitCode(ByVal s As String, ByRef code As String, ByRef tl As String)
+    Dim i As Long, c As String, q As String
+    q = "": code = s: tl = ""
+    For i = 1 To Len(s)
+        c = Mid$(s, i, 1)
+        If q <> "" Then
+            If c = q Then q = ""
+        ElseIf c = "'" Or c = Chr$(34) Then
+            q = c
+        ElseIf c = "/" And i < Len(s) And Mid$(s, i + 1, 1) = "/" Then
+            code = Left$(s, i - 1): tl = Mid$(s, i): Exit Sub
+        End If
+    Next i
+End Sub
+
+' первый оператор (с ";") и хвост строки (K11)
+Private Sub L1_SplitStmt(ByVal s As String, ByRef stmt As String, ByRef rest As String)
+    Dim i As Long, c As String, q As String, d As Long
+    q = "": d = 0: stmt = s: rest = ""
+    For i = 1 To Len(s)
+        c = Mid$(s, i, 1)
+        If q <> "" Then
+            If c = q Then q = ""
+        ElseIf c = "'" Or c = Chr$(34) Then
+            q = c
+        Else
+            If c = "(" Then d = d + 1
+            If c = ")" Then d = d - 1
+            If c = ";" And d = 0 Then
+                stmt = Left$(s, i): rest = Trim$(Mid$(s, i + 1)): Exit Sub
+            End If
+        End If
+    Next i
+End Sub
+
+Private Function L1_CyrOut(ByVal s As String) As Boolean
+    Dim q As String, i As Long, c As String, a As Long
+    q = ""
+    For i = 1 To Len(s)
+        c = Mid$(s, i, 1)
+        If q <> "" Then
+            If c = q Then q = ""
+        ElseIf c = "'" Or c = Chr$(34) Then
+            q = c
+        ElseIf c = "/" And i < Len(s) And Mid$(s, i + 1, 1) = "/" Then
+            Exit For
+        Else
+            a = Asc(c)
+            If (a >= 192 And a <= 255) Or a = 168 Or a = 184 Then
+                L1_CyrOut = True: Exit Function
+            End If
+        End If
+    Next i
+    L1_CyrOut = False
+End Function
+
+Private Function L1_Simple(ByVal s As String) As Boolean
+    Dim i As Long
+    L1_Simple = False
+    If Len(s) = 0 Then Exit Function
+    For i = 1 To Len(s)
+        If Not L1_Idc(Mid$(s, i, 1)) Then Exit Function
+    Next i
+    L1_Simple = True
+End Function
+
+'------------------------- дельта глубины ----------------------------
+Private Function L1_Delta(ByVal s As String) As Long
+    Dim t As String, i As Long, c As String, q As String, d As Long
+    Dim parts() As String, j As Long, w As String
+    t = LCase$(s)
+    If InStr(t, "begin") = 0 And InStr(t, "end") = 0 And InStr(t, "try") = 0 _
+       And InStr(t, "repeat") = 0 And InStr(t, "until") = 0 And InStr(t, "case") = 0 Then
+        L1_Delta = 0: Exit Function
+    End If
+    t = Space$(Len(s)): q = ""
+    For i = 1 To Len(s)
+        c = Mid$(s, i, 1)
+        If q <> "" Then
+            If c = q Then q = ""
+        ElseIf c = "'" Or c = Chr$(34) Then
+            q = c
+        ElseIf c = "/" And i < Len(s) And Mid$(s, i + 1, 1) = "/" Then
+            Exit For
+        ElseIf L1_Idc(c) Then
+            Mid$(t, i, 1) = LCase$(c)
+        End If
+    Next i
+    parts = Split(t, " ")
+    d = 0
+    For j = LBound(parts) To UBound(parts)
+        w = parts(j)
+        If w = "begin" Or w = "try" Or w = "repeat" Or w = "case" Then d = d + 1
+        If w = "end" Or w = "until" Then d = d - 1
+    Next j
+    L1_Delta = d
+End Function
+
+Private Function L1_SumDelta(ByRef a() As String, ByVal ix As Long, ByVal cnt As Long) As Long
+    Dim k As Long, d As Long
+    d = 0
+    For k = ix To ix + cnt - 1
+        d = d + L1_Delta(a(k))
+    Next k
+    L1_SumDelta = d
+End Function
+
+' баланс съеденного блока == баланс вставляемого (K16)
+Private Function L1_BalOk(ByRef a() As String, ByVal ix As Long, ByVal cnt As Long, ByVal txt As String) As Boolean
+    Dim d2 As Long, v As Variant
+    d2 = 0
+    For Each v In Split(txt, vbCrLf)
+        d2 = d2 + L1_Delta(CStr(v))
+    Next v
+    L1_BalOk = (L1_SumDelta(a, ix, cnt) = d2)
+End Function
+
+' следующий значимый оператор - else? (K14)
+Private Function L1_NextElse(ByRef a() As String, ByVal ix As Long, ByVal n As Long) As Boolean
+    Dim k As Long, s As String
+    L1_NextElse = False
+    For k = ix + 1 To n
+        s = Trim$(a(k))
+        If Len(s) > 0 And Left$(s, 2) <> "//" Then
+            L1_NextElse = L4_M(s, "^else\b")
+            Exit Function
+        End If
+    Next k
+End Function
+
+'------------------------- Power-фиксы (K3) --------------------------
+Private Function L1_PowerRep(ByVal a1 As String, ByVal a2 As String, ByVal args As String) As String
+    Dim b As Double, E As Double
+    If a1 = "" Or a2 = "" Then
+        L1_PowerRep = "Power(" & args & ")"
+    ElseIf L1_IsNum(a2, E) And E = 2 Then
+        L1_PowerRep = "(" & a1 & ")*(" & a1 & ")"                  ' С0-2
+    ElseIf L1_IsNum(a2, E) And E = 0.5 Then
+        L1_PowerRep = "Sqrt(" & a1 & ")"                           ' С1а-2
+    ElseIf L1_IsNum(a1, b) Then
+        If b > 0 Then
+            If Abs(b - 2.7182) < 0.000000001 Then
+                L1_PowerRep = "Exp((" & a2 & ")*0.9999698965)"     ' С1а-1: LNG2E=ln(2.7182)
+            Else
+                L1_PowerRep = "Exp((" & a2 & ")*Ln(" & a1 & "))"   ' точная эквивалентность
+            End If
+        Else
+            L1_PowerRep = "Power(" & a1 & "," & a2 & ")"
+        End If
+    Else
+        L1_PowerRep = "Power(" & a1 & "," & a2 & ")"               ' знак базы неизвестен - не трогаем
+    End If
+End Function
+
+Private Function L1_FixPowers(ByVal s As String) As String
+    Dim out As String, i As Long, p As Long, j As Long, k As Long
+    Dim depth As Long, args As String, c As String, a1 As String, a2 As String
+    Dim okPrev As Boolean
+    out = "": i = 1
+    Do While i <= Len(s)
+        p = InStr(i, s, "Power(", vbTextCompare)
+        If p = 0 Then
+            out = out & Mid$(s, i)
+            i = Len(s) + 1
+        Else
+            okPrev = True
+            If p > 1 Then okPrev = Not L1_Idc(Mid$(s, p - 1, 1))
+            If Not okPrev Then
+                out = out & Mid$(s, i, p + 5 - i)
+                i = p + 6
+            Else
+                out = out & Mid$(s, i, p - i)
+                j = p + 6: depth = 1: args = ""
+                Do While j <= Len(s)
+                    c = Mid$(s, j, 1)
+                    If c = "(" Then depth = depth + 1
+                    If c = ")" Then
+                        depth = depth - 1
+                        If depth = 0 Then Exit Do
+                    End If
+                    args = args & c
+                    j = j + 1
+                Loop
+                If depth <> 0 Then
+                    out = out & "Power("
+                    i = p + 6
+                Else
+                    a1 = "": a2 = "": depth = 0
+                    For k = 1 To Len(args)
+                        c = Mid$(args, k, 1)
+                        If c = "(" Then depth = depth + 1
+                        If c = ")" Then depth = depth - 1
+                        If c = "," And depth = 0 Then
+                            a1 = Trim$(Left$(args, k - 1))
+                            a2 = Trim$(Mid$(args, k + 1))
+                            Exit For
+                        End If
+                    Next k
+                    a1 = L1_FixPowers(a1)
+                    a2 = L1_FixPowers(a2)
+                    out = out & L1_PowerRep(a1, a2, args)
+                    i = j + 1
+                End If
+            End If
+        End If
+    Loop
+    L1_FixPowers = out
+End Function
+
+'------------------------- условия стражей ---------------------------
+Private Function L1_Bad(ByVal nm As String) As String
+    If csh1 Then
+        L1_Bad = "double.IsNaN(" & nm & ")||Math.Abs(" & nm & ")>1e300"
+    Else
+        L1_Bad = "IsNan(" & nm & ") or (Abs(" & nm & ")>1e300)"
+    End If
+End Function
+
+Private Function L1_Ok(ByVal nm As String) As String
+    If csh1 Then
+        L1_Ok = "(!double.IsNaN(" & nm & ")) && (Math.Abs(" & nm & ")<=1e300)"
+    Else
+        L1_Ok = "(Not IsNan(" & nm & ")) and (Abs(" & nm & ")<=1e300)"
+    End If
+End Function
+
+Private Function L1_RngBad(ByVal nm As String) As String
+    If csh1 Then
+        L1_RngBad = "(LIM_P_max>0) && (((" & nm & ")<LIM_P_min) || ((" & nm & ")>LIM_P_max))"
+    Else
+        L1_RngBad = "(LIM_P_max>0) and (((" & nm & ")<LIM_P_min) or ((" & nm & ")>LIM_P_max))"
+    End If
+End Function
+
+Private Function L1_Live(ByVal nm As String) As String
+    If csh1 Then
+        L1_Live = "(!double.IsNaN(" & nm & ")) && (Math.Abs(" & nm & ")<=1e300) && ((" & nm & ")>1e-9)"
+    Else
+        L1_Live = "(Not IsNan(" & nm & ")) and (Abs(" & nm & ")<=1e300) and ((" & nm & ")>1e-9)"
+    End If
+End Function
+
+Private Function L1_Rec(ByVal idx As String, ByVal nm As String, ByVal uz As Long, ByVal tp As Long) As String
+    If csh1 Then
+        L1_Rec = "if (" & idx & "==0) && (NaN_seq<1000) { NaN_seq++; " & idx & "=NaN_seq; NaN_nm[NaN_seq]=""" & nm & """; NaN_uz[NaN_seq]=" & CStr(uz) & "; NaN_tp[NaN_seq]=" & CStr(tp) & "; }"
+    Else
+        L1_Rec = "if (" & idx & "=0) and (NaN_seq<1000) then begin NaN_seq:=NaN_seq+1; " & idx & ":=NaN_seq; NaN_nm[NaN_seq]:='" & nm & "'; NaN_uz[NaN_seq]:=" & CStr(uz) & "; NaN_tp[NaN_seq]:=" & CStr(tp) & "; end;"
+    End If
+End Function
+
+'------------------------- буфер вывода / файлы ----------------------
+Private Sub L1_Push(ByRef a() As String, ByRef n As Long, ByVal s As String)
+    If n > UBound(a) Then ReDim Preserve a(0 To UBound(a) + 50000)
+    a(n) = s: n = n + 1
+End Sub
+
+Private Function L1_ReadText(ByVal path As String, ByRef enc As String) As String
+    Dim st As Object, b As Variant, f As Integer, ln As String
+    Dim a() As String, n As Long
+    enc = "windows-1251"
+    On Error GoTo Native
+    Set st = CreateObject("ADODB.Stream")
+    st.Type = 1: st.Open: st.LoadFromFile path
+    If st.Size >= 2 Then
+        b = st.Read(2)
+        If b(0) = &HFF And b(1) = &HFE Then enc = "unicode"
+        If b(0) = &HFE And b(1) = &HFF Then enc = "unicodeFFFE"
+        If st.Size >= 3 Then
+            st.Position = 0
+            b = st.Read(3)
+            If b(0) = &HEF And b(1) = &HBB And b(2) = &HBF Then enc = "utf-8"
+        End If
+    End If
+    st.Position = 0: st.Type = 2: st.Charset = enc
+    L1_ReadText = st.ReadText(-1)
+    st.Close
+    Exit Function
+Native:
+    On Error GoTo 0
+    ReDim a(0 To 9999): n = 0
+    f = FreeFile
+    Open path For Input As #f
+    Do While Not EOF(f)
+        Line Input #f, ln
+        L1_Push a, n, ln
+    Loop
+    Close #f
+    If n > 0 Then ReDim Preserve a(0 To n - 1) Else ReDim a(0 To 0): a(0) = ""
+    L1_ReadText = Join(a, vbCrLf) & vbCrLf
+End Function
+
+Private Sub L1_WriteText(ByVal path As String, ByVal txt As String, ByVal enc As String)
+    Dim st As Object, f As Integer
+    On Error GoTo Native
+    Set st = CreateObject("ADODB.Stream")
+    st.Type = 2: st.Charset = enc: st.Open
+    st.WriteText txt
+    st.SaveToFile path, 2
+    st.Close
+    Exit Sub
+Native:
+    On Error GoTo 0
+    f = FreeFile
+    Open path For Output As #f
+    Print #f, txt;
+    Close #f
+End Sub
+
+Private Function L1_LoadLines(ByVal path As String, ByRef n As Long, ByRef enc As String, _
+                              ByRef eol As String, ByRef endsNL As Boolean) As String()
+    Dim txt As String, a() As String, r() As String, i As Long
+    txt = L1_ReadText(path, enc)
+    If InStr(txt, vbCrLf) > 0 Then eol = vbCrLf Else eol = vbLf
+    endsNL = (Right$(txt, 1) = vbLf)
+    a = Split(txt, vbLf)
+    n = UBound(a) - LBound(a) + 1
+    If endsNL Then n = n - 1
+    If n < 0 Then n = 0
+    ReDim r(1 To IIf(n > 0, n, 1))
+    For i = 1 To n
+        r(i) = Replace(a(i - 1), vbCr, "")
+    Next i
+    L1_LoadLines = r
+End Function
+
+' ближайшее Tc*-имя в окне 8 строк (единый алгоритм для обоих проходов, K7)
+Private Function L1_FindTc(ByRef a() As String, ByVal ix As Long) As String
+    Dim k As Long, lo As Long, s As String
+    L1_FindTc = ""
+    lo = ix - 8: If lo < 1 Then lo = 1
+    For k = ix - 1 To lo Step -1
+        s = Trim$(a(k))
+        If L4_M(s, "(Tc[A-Za-z0-9_]*)") Then
+            L1_FindTc = L4_SM(s, "(Tc[A-Za-z0-9_]*)", 0)
+            Exit Function
+        End If
+    Next k
+End Function
+
+Private Function L1_DeclAnchor(ByRef a() As String, ByVal n As Long) As Long
+    Dim i As Long, s As String
+    L1_DeclAnchor = 0
+    For i = 1 To n
+        s = a(i)
+        If InStr(s, "array") > 0 And (InStr(s, "ISTO_p") > 0 Or InStr(s, "XX0") > 0) Then
+            L1_DeclAnchor = i: Exit Function
+        End If
+    Next i
+    For i = 1 To n
+        If InStr(a(i), "array[") > 0 Then L1_DeclAnchor = i: Exit Function
+    Next i
+    For i = 1 To n
+        If LCase$(Trim$(a(i))) = "var" Then L1_DeclAnchor = i: Exit Function
+    Next i
+End Function
+
+'------------------------- декларации v4 (K8/K9) ---------------------
+Private Function L1_Decls4(ByVal SZ As Long, ByVal tprevList As String, ByVal nEdges As Long) As String
+    Dim r As String, p As Variant, E As Long
+    E = nEdges: If E < 1 Then E = 1
+    r = "NaN_t: array[1.." & CStr(SZ) & "] of integer; // LH3 v3: событие по хвосту ISTO_p (0=чист)" & vbCrLf
+    r = r & "NaN_in: array[1.." & CStr(SZ) & "] of integer; // LH3 v3: событие на входе узла" & vbCrLf
+    r = r & "NaN_seq, NaN_call, NaN_cnt, NaN_i, NaN_rng: integer; // LH3 v3/v4: счётчики скана" & vbCrLf
+    r = r & "NaN_nm: array[1..1000] of string; // LH3 v3: имена виновников" & vbCrLf
+    r = r & "NaN_uz: array[1..1000] of integer; // LH3 v3: узел события" & vbCrLf
+    r = r & "NaN_tp: array[1..1000] of integer; // LH3 v3: 1=вход 2=хвост 3/4=диапазон" & vbCrLf
+    r = r & "NaN_str: string; // LH3 v3" & vbCrLf
+    r = r & "W_damp: Double; // LH3 v4 F11" & vbCrLf
+    r = r & "LH3_cnt_OI, LH3_cnt_24K, LH3_cnt_OIfail: integer; // LH3 v4 С0-1" & vbCrLf
+    r = r & "LH3_symmax: Double; LH3_eReady: Boolean; LH3_eMax: integer; // LH3 v4 С0-5" & vbCrLf
+    r = r & "LH3_eN: array[1.." & CStr(E) & "] of integer; // LH3 v4 С0-5" & vbCrLf
+    r = r & "LH3_eS: array[1.." & CStr(E) & "] of integer; // LH3 v4 С0-5" & vbCrLf
+    r = r & "LH3_eNS: array[1.." & CStr(E) & "] of integer; // LH3 v4 С0-5" & vbCrLf
+    r = r & "LH3_eSS: array[1.." & CStr(E) & "] of integer; // LH3 v4 С0-5" & vbCrLf
+    r = r & "AA_oi: array[1..1000] of double; BB_oi: array[1..1000] of double; // LH3 v4 С0-3" & vbCrLf
+    r = r & "LH3_PsReady: Boolean; // LH3 v4 С0-3" & vbCrLf
+    r = r & "LH3_oK, LH3_oKm, LH3_oKn, LH3_oLo, LH3_oHi, LH3_oFL, LH3_oDen: Double; // LH3 v4 OI_MODE" & vbCrLf
+    r = r & "LH3_oIt: integer; // LH3 v4 OI_MODE" & vbCrLf
+    r = r & "XX07_l, XX08_l, XX09_l: Double; // LH3 v4 SHC_NSCR" & vbCrLf
+    For Each p In Split(tprevList, "|")
+        If Len(p) > 0 Then r = r & "LH3_Tprev_" & p & ": Double; // LH3 v4 F12" & vbCrLf
+    Next p
+    If Right$(r, 2) = vbCrLf Then r = Left$(r, Len(r) - 2)
+    L1_Decls4 = r
+End Function
+
+'------------------------- инициализация рёбер (K18) -----------------
+Private Function L1_EdgeInit(ByVal E As Object) As String
+    Dim k As Variant, p() As String, r As String, i As Long, rev As String
+    r = "": i = 0
+    For Each k In E.keys
+        p = Split(CStr(k), "|")
+        rev = p(1) & "|" & p(0)
+        If E.Exists(rev) Then
+            If CLng(p(0)) < CLng(p(1)) Then
+                i = i + 1
+                r = r & "  LH3_eN[" & CStr(i) & "]:=" & p(0) & "; LH3_eS[" & CStr(i) & "]:=" & p(1) & _
+                        "; LH3_eNS[" & CStr(i) & "]:=" & p(1) & "; LH3_eSS[" & CStr(i) & "]:=" & p(0) & "; // LH3 v4 С0-5" & vbCrLf
+            End If
+        End If
+    Next k
+    If i = 0 Then L1_EdgeInit = "": Exit Function
+    L1_EdgeInit = "if (Not LH3_eReady) then begin" & vbCrLf & r & _
+                  "  LH3_eMax:=" & CStr(i) & "; LH3_eReady:=true;" & vbCrLf & "end;"
+End Function
+
+'------------------------- HEALTH-скан v4 ----------------------------
+Private Function L1_Scan4(ByVal SZ As Long, ByVal edgeInit As String, ByVal hasFcR As Boolean) As String
+    Dim r As String
+    r = "// LH1-NaN-scan start (v21, только давления)" & vbCrLf
+    r = r & "if (NaN_seq>0) then begin" & vbCrLf
+    r = r & "  Log(' LH1 NaN-виновники (давления): всего='+cstrf(NaN_seq,0)+' - NaN/бред/диапазон гашены last-good/пресетом');  kerr:= -790;" & vbCrLf
+    r = r & "  NaN_i:=1;" & vbCrLf
+    r = r & "  while (NaN_i<=NaN_seq) do begin" & vbCrLf
+    r = r & "    if (NaN_i<31) then begin" & vbCrLf
+    r = r & "      NaN_str:='';" & vbCrLf
+    r = r & "      if (NaN_tp[NaN_i]=1) then NaN_str:='вход';" & vbCrLf
+    r = r & "      if (NaN_tp[NaN_i]=2) then NaN_str:='хвост';" & vbCrLf
+    r = r & "      if (NaN_tp[NaN_i]=3) then NaN_str:='вход (диапазон)';" & vbCrLf
+    r = r & "      if (NaN_tp[NaN_i]=4) then NaN_str:='хвост (диапазон)';" & vbCrLf
+    r = r & "      if (NaN_uz[NaN_i]>0) then begin Log(' LH1 виновник №'+cstrf(NaN_i,0)+': узел #'+cstrf(NaN_uz[NaN_i],0)+' - '+NaN_nm[NaN_i]+' ('+NaN_str+')');  kerr:= -791; end;" & vbCrLf
+    r = r & "      if (NaN_uz[NaN_i]=0) then begin Log(' LH1 виновник №'+cstrf(NaN_i,0)+': граница - '+NaN_nm[NaN_i]+' ('+NaN_str+')');  kerr:= -792; end;" & vbCrLf
+    r = r & "    end else begin" & vbCrLf
+    r = r & "      if (NaN_i=31) then begin Log(' LH1 ... всего '+cstrf(NaN_seq,0)+' событий - показаны первые 30');  kerr:= -792; end;" & vbCrLf
+    r = r & "    end;" & vbCrLf
+    r = r & "    NaN_i:=NaN_i+1;" & vbCrLf
+    r = r & "  end;" & vbCrLf
+    r = r & "end;" & vbCrLf
+    r = r & "NaN_cnt:=0;  NaN_rng:=0;" & vbCrLf
+    r = r & "NaN_i:=1;" & vbCrLf
+    r = r & "while (NaN_i<=" & CStr(SZ) & ") do begin" & vbCrLf
+    r = r & "  if IsNan(ISTO_p[NaN_i]) or (Abs(ISTO_p[NaN_i])>1e300) then NaN_cnt:=NaN_cnt+1;" & vbCrLf
+    r = r & "  if (LIM_P_max>0) and (ISTO_p[NaN_i]>1e-9) and ((ISTO_p[NaN_i]<LIM_P_min) or (ISTO_p[NaN_i]>LIM_P_max)) then NaN_rng:=NaN_rng+1;" & vbCrLf
+    r = r & "  NaN_i:=NaN_i+1;" & vbCrLf
+    r = r & "end;" & vbCrLf
+    r = r & "if (NaN_cnt>0) then begin Log(' LH1 ВНИМАНИЕ: NaN/бред в зеркалах ISTO_p: '+cstrf(NaN_cnt,0)+' (прорвалось мимо стражей)');  kerr:= -793; end;" & vbCrLf
+    r = r & "if (NaN_rng>0) then begin Log(' LH1 ВНИМАНИЕ: зеркал ISTO_p вне диапазона LIM_P: '+cstrf(NaN_rng,0)+' (проверьте границы _0i)');  kerr:= -793; end;" & vbCrLf
+    r = r & "if (NaN_seq=0) and (NaN_cnt=0) and (NaN_rng=0) then begin Log(' LH1 NaN-скан: чисто (скан #'+cstrf(NaN_call,0)+')');  kerr:= -794; end;" & vbCrLf
+    r = r & "NaN_call:=NaN_call+1;" & vbCrLf
+    r = r & "// LH1-NaN-scan end" & vbCrLf
+    r = r & "Log(' LH3 С0-1: OI вызовов='+cstrf(LH3_cnt_OI,0)+' 24К-циклов='+cstrf(LH3_cnt_24K,0)+' OIfail='+cstrf(LH3_cnt_OIfail,0));  kerr:= -989; // LH3 v4 С0-1"
+    If hasFcR And Len(edgeInit) > 0 Then
+        r = r & vbCrLf & edgeInit & vbCrLf
+        r = r & "if (LH3_eReady) then begin" & vbCrLf
+        r = r & "  LH3_symmax:=0;" & vbCrLf
+        r = r & "  NaN_i:=1;" & vbCrLf
+        r = r & "  while (NaN_i<=LH3_eMax) do begin" & vbCrLf
+        r = r & "    if (Abs(Fc_r[LH3_eN[NaN_i],LH3_eS[NaN_i]]+Fc_r[LH3_eNS[NaN_i],LH3_eSS[NaN_i]])>LH3_symmax) then LH3_symmax:=Abs(Fc_r[LH3_eN[NaN_i],LH3_eS[NaN_i]]+Fc_r[LH3_eNS[NaN_i],LH3_eSS[NaN_i]]);" & vbCrLf
+        r = r & "    NaN_i:=NaN_i+1;" & vbCrLf
+        r = r & "  end;" & vbCrLf
+        r = r & "  Log(' LH3 симметрия рёбер: max|Fc_r[i,k]+Fc_r[j,k'']|='+cstrf(LH3_symmax,6));  kerr:= -995;" & vbCrLf
+        r = r & "end;"
+    End If
+    L1_Scan4 = r
+End Function
+
+'=====================================================================
+' ГЛАВНЫЙ КОНВЕРТОР
+'=====================================================================
+Sub LH3_Convert()
+    Dim pth As String, fn As String, outn As String
+    Dim ln As String, s As String, pl As String, code As String, tl As String, c2 As String
+    Dim nm As String, s2 As String, rest As String, stmt As String, gv As String, hold As String
+    Dim txt As String, rep As String, cond As String, pv As String, suf As String
+    Dim own As String, nb As String, vmin As String, kkey As String, nx As String
+    Dim i As Long, p1 As Long, p2 As Long, p3 As Long, p4 As Long, n As Long
+    Dim chi As Long, SZ As Long, csh As Boolean
+    Dim curN As Long, hDone As Boolean, dDone As Boolean, noTail As Boolean, is0 As Boolean
+    Dim totB As Long, totH As Long, totC As Long
+    Dim fileList() As String, nFiles As Long, fi As Long
+    Dim PD As Object, EdgePairs As Object, Tprev As Object
+    Dim dd As Long, ddA As Long, adv As Long, g48 As Long, g48lvl As Long
+    Dim lines() As String, nLines As Long, ix As Long, kx As Long, declAt As Long, hasFcR As Boolean
+    Dim outArr() As String, nOut As Long
+    Dim enc As String, eol As String, endsNL As Boolean
+    Dim spActive As Boolean, spTxt As String, curLoopO As Boolean, curLoopLvl As Long
+    Dim oiProc As Boolean, b2done As Boolean, kfffdone As Boolean
+    Dim t2N As Long, t2S As Long, t2Pown As String, t2Ps As String, t2corr As String
+    Dim t2dp As String, t2fp As String, rr As String, rrr As String
+    Dim tpv As Variant, tprevList As String, nEdges As Long, arr As Variant, bal As Long
+    Dim nA1 As Long, nA2 As Long, nE27 As Long, nSkip As Long, nNoDecl As Long
+    Dim nT2 As Long, nT3 As Long, nA6 As Long, nF12 As Long, nF12m As Long
+    Dim nB14 As Long, nB11 As Long, nB12 As Long, nB12d As Long, nB5 As Long, nA9 As Long
+    Dim nF11 As Long, nC24 As Long, nA11 As Long, nPSC As Long, nOIM As Long
+    Dim nNORM As Long, nEGFIX As Long, nROI As Long, nSHCW As Long, nSHCN As Long
+    Dim nNOSWAP As Long, nROSMO As Long, nSTOR4 As Long, nFREPS As Long, nB15 As Long
+    Dim nB15b As Long, nB8M As Long, nB2P As Long, nKFP As Long, nPW As Long
+    ' --- флаги правил v4 (K17: каждый реально гейтит своё правило) ---
+    Dim SW_T2 As Boolean, SW_T3 As Boolean, SW_A6 As Boolean, SW_F12 As Boolean, SW_B5 As Boolean
+    Dim SW_A9 As Boolean, SW_OIM As Boolean, SW_EGFIX As Boolean, SW_NORM As Boolean, SW_ROI As Boolean
+    Dim SW_SHCW As Boolean, SW_SHCN As Boolean, SW_NOSWAP As Boolean, SW_ROSMO As Boolean, SW_STOR4 As Boolean
+    Dim SW_B8 As Boolean, SW_B11 As Boolean, SW_B12 As Boolean, SW_B14 As Boolean, SW_B15 As Boolean
+    Dim SW_FREPS As Boolean, SW_CNT As Boolean, SW_SYM As Boolean, SW_B2P As Boolean, SW_PSC As Boolean
+    Dim SW_KFP As Boolean, SW_F11 As Boolean, SW_A1 As Boolean, SW_A2 As Boolean, SW_A11 As Boolean
+    Dim SW_PWR As Boolean, SW_SCAN As Boolean
+
+    On Error GoTo Fail
+
+    SW_T2 = True: SW_T3 = True: SW_A6 = True: SW_F12 = True: SW_B5 = True: SW_A9 = True
+    SW_OIM = True: SW_EGFIX = True: SW_NORM = True: SW_ROI = True: SW_SHCW = True: SW_SHCN = True
+    SW_NOSWAP = True: SW_ROSMO = True: SW_STOR4 = True: SW_B8 = True: SW_B11 = True: SW_B12 = True
+    SW_B14 = True: SW_B15 = True: SW_FREPS = True: SW_CNT = True: SW_SYM = True: SW_B2P = True
+    SW_PSC = True: SW_KFP = True: SW_F11 = True: SW_A1 = True: SW_A2 = True: SW_A11 = True
+    SW_PWR = True: SW_SCAN = True
+
+    Set PD = CreateObject("Scripting.Dictionary")
+    Set EdgePairs = CreateObject("Scripting.Dictionary")
+    Set Tprev = CreateObject("Scripting.Dictionary")
+
+    With Application.FileDialog(msoFileDialogFolderPicker)
+        .Title = "LH3 v4.1: папка с юнитами проекта 19.785 (м2-комплект)"
+        If .Show <> -1 Then Exit Sub
+        pth = .SelectedItems(1)
+        If Right$(pth, 1) <> "\" Then pth = pth & "\"
+    End With
+
+    '================= ПРОХОД 1: список, защита, chi, SZ, пресеты, рёбра =================
+    chi = 0: csh = False: SZ = 0: nFiles = 0
+    ReDim fileList(1 To 200)
+    fn = Dir(pth & "*.txt")
+    Do While fn <> ""
+        If fn Like "*_LH3.txt" Then
+            MsgBox "LH3: в папке уже есть файлы _LH3 (" & fn & ") - детектор уже применён." & vbCrLf & _
+                   "Удалите старые *_LH3-файлы и запустите заново. Конверсия не выполнялась.", vbExclamation, "LH3 v4.1"
+            Exit Sub
+        End If
+        nFiles = nFiles + 1
+        If nFiles > UBound(fileList) Then ReDim Preserve fileList(1 To UBound(fileList) + 200)
+        fileList(nFiles) = fn
+        fn = Dir
+    Loop
+    If nFiles = 0 Then
+        MsgBox "LH3: в папке нет *.txt.", vbExclamation, "LH3 v4.1": Exit Sub
+    End If
+
+    For fi = 1 To nFiles
+        fn = fileList(fi)
+        lines = L1_LoadLines(pth & fn, nLines, enc, eol, endsNL)
+        For ix = 1 To nLines
+            ln = lines(ix): s = Trim$(ln)
+            If InStr(ln, "LH3 v") > 0 Or InStr(ln, "NaN_t[") > 0 Or InStr(ln, "INOFF") > 0 Then
+                MsgBox "LH3: детектор уже стоит в проекте (маркер найден в " & fn & ", строка " & CStr(ix) & ").", vbExclamation, "LH3 v4.1"
+                Exit Sub
+            End If
+            If InStr(ln, "for (int") > 0 Or InStr(ln, "Math.") > 0 Then csh = True
+            p1 = InStr(ln, "Давление и расход")
+            If p1 > 0 Then
+                p2 = InStr(1, ln, "#")
+                If p2 > 0 And p2 < p1 Then
+                    n = Val(Trim$(Mid$(ln, p2 + 1, p1 - p2 - 1)))
+                    If n > chi Then chi = n
+                End If
+            End If
+            If InStr(ln, "ISTO_p") > 0 And InStr(ln, "array") > 0 Then
+                p1 = InStr(ln, "array[1..")
+                If p1 > 0 And SZ = 0 Then SZ = Val(Trim$(Mid$(ln, p1 + 9)))
+            End If
+            If fn Like "*_0i.txt" Then
+                p1 = InStr(s, ":=")
+                If p1 > 1 And InStr(s, "kerr") > 0 And Left$(s, 2) <> "//" Then
+                    nm = Trim$(Left$(s, p1 - 1))
+                    p2 = InStr(p1 + 2, s, ";")
+                    If p2 > 0 And L1_Simple(nm) Then
+                        s2 = Trim$(Mid$(s, p1 + 2, p2 - p1 - 2))
+                        If Len(s2) > 0 And InStr(s2, "'") = 0 And InStr(s2, Chr$(34)) = 0 Then
+                            If Not PD.Exists(nm) Then PD.Add nm, s2
+                        End If
+                    End If
+                End If
+            End If
+            ' K5: ключ ребра = N|S (2-й аргумент, не 3-й)
+            If L4_M(s, "^FR_C\((\d+),(\d+),") Then
+                kkey = L4_SM(s, "^FR_C\((\d+),", 0) & "|" & L4_SM(s, "^FR_C\(\d+,(\d+),", 0)
+                If Not EdgePairs.Exists(kkey) Then EdgePairs.Add kkey, 1
+            End If
+            ' K7: Tprev-суффиксы тем же алгоритмом, что и в проходе 2
+            If L4_M(s, "^aa2:=\(0\.5\*aa2\+\(aa2\+1\)\*XX0\[14\]\*XX0\[15\]-1\)/1\.5;") Then
+                nm = L1_FindTc(lines, ix)
+                If Len(nm) > 2 Then
+                    suf = Mid$(nm, 3)
+                    If Not Tprev.Exists(suf) Then Tprev.Add suf, 1
+                End If
+            End If
+        Next ix
+    Next fi
+    csh1 = csh
+
+    If chi = 0 Then
+        MsgBox "LH3: блоки 'Давление и расход' не найдены - это сборка 19.785?", vbExclamation, "LH3 v4.1"
+        Exit Sub
+    End If
+    If SZ = 0 Then SZ = chi + 1
+
+    tprevList = ""
+    For Each tpv In Tprev.keys
+        tprevList = tprevList & IIf(Len(tprevList) > 0, "|", "") & tpv
+    Next tpv
+    nEdges = EdgePairs.Count
+
+    '================= ПРОХОД 2: конвертация =================
+    For fi = 1 To nFiles
+        fn = fileList(fi)
+        outn = Left$(fn, Len(fn) - 4) & "_LH3.txt"
+        noTail = (fn Like "*_0i.txt") Or (fn Like "*_000.txt")
+        is0 = (fn Like "*_0.txt")                     ' K2
+
+        lines = L1_LoadLines(pth & fn, nLines, enc, eol, endsNL)
+        hasFcR = False
+        For kx = 1 To nLines
+            If InStr(lines(kx), "Fc_r[") > 0 Then hasFcR = True: Exit For
+        Next kx
+        declAt = L1_DeclAnchor(lines, nLines)
+        If noTail Then declAt = 0
+
+        curN = 0: hDone = False: dDone = False: dd = 0
+        g48 = 0: g48lvl = 0: hold = ""
+        oiProc = False: b2done = False: kfffdone = False
+        spActive = False: spTxt = "": curLoopO = False: curLoopLvl = 0
+
+        ReDim outArr(0 To 49999): nOut = 0
+        ix = 1
+        Do While ix <= nLines
+            ln = lines(ix)
+            s = Trim$(ln)                 ' якоря всегда по ОРИГИНАЛУ
+            pl = ln                       ' K1: вывод - трансформированная копия
+            ddA = dd + L1_Delta(ln)
+            adv = 1
+
+            ' --- С0-1: счётчик вызовов OI (после begin процедуры) ---
+            If oiProc And s = "begin" Then
+                L1_Push outArr, nOut, pl
+                L1_Push outArr, nOut, "  LH3_cnt_OI:=LH3_cnt_OI+1;  kerr:=-990; // LH3 v4 С0-1"
+                oiProc = False
+                GoTo LineDone
+            End If
+            If Len(s) = 0 Or noTail Then
+                L1_Push outArr, nOut, pl
+                GoTo LineDone
+            End If
+
+            ' --- A2: гейт ttyr=48 (снятие обёртки if/begin/end) ---
+            If g48 = 1 Then
+                If Left$(s, 2) = "//" Then
+                    L1_Push outArr, nOut, pl
+                    GoTo LineDone
+                ElseIf s = "begin" Then
+                    g48 = 2: g48lvl = ddA
+                    GoTo LineDone
+                Else
+                    L1_Push outArr, nOut, hold
+                    hold = "": g48 = 0
+                End If
+            ElseIf g48 = 2 And ddA = g48lvl - 1 And (s = "end" Or L1_Starts(s, "end;")) Then
+                If Len(s) > 4 Then
+                    rest = Trim$(Mid$(s, 5))
+                    If Len(rest) > 0 Then L1_Push outArr, nOut, rest
+                End If
+                g48 = 0: nA2 = nA2 + 1
+                GoTo LineDone
+            End If
+
+            ' --- A11: сбор span ОИ-петли ---
+            If curLoopO Then
+                If Not spActive And s = "V_r[1]:=1;" Then
+                    spActive = True: spTxt = ""
+                ElseIf spActive Then
+                    If L4_M(s, "^XX0\[11\]:=") Then
+                        spActive = False
+                    Else
+                        spTxt = spTxt & "|" & s
+                    End If
+                End If
+            End If
+
+            ' --- линейные трансформации (якоря не меняются) ---
+            L1_SplitCode pl, code, tl
+            If SW_B8 Then
+                If InStr(code, "*298/(273.15") > 0 Then
+                    code = Replace(code, "*298/(273.15", "*273.15/(273.15"): nB8M = nB8M + 1
+                End If
+                If InStr(code, "/30.14+") > 0 Then
+                    code = Replace(code, "/30.14+", "/M[1]+")
+                    code = Replace(code, "/356.02+", "/M[2]+")
+                    code = Replace(code, "/107.51+", "/M[3]+")
+                    code = Replace(code, "/198.32+", "/M[4]+")
+                    code = Replace(code, "/28.58+", "/M[5]+")
+                    code = Replace(code, "/18+0.1*e27", "/M[6]+0.1*e27")
+                    nB8M = nB8M + 1
+                End If
+            End If
+            If SW_B15 Then
+                If L4_M(s, "^(KU2_r\[\d+,tty_1,tty_2\]:=KU2_r\[\d+,tty_1,tty_2\])/(XX0\[7\]);") Then
+                    code = Replace(code, "/(XX0[7]);", "/(XX0[7]+e27);"): nB15 = nB15 + 1
+                ElseIf s = "XX0[1]:=XX0[1]/XX0[7];" Then          ' K6
+                    code = Replace(code, "/XX0[7];", "/(XX0[7]+e27);"): nB15b = nB15b + 1
+                End If
+            End If
+            If SW_A1 Then
+                If InStr(code, "<pmin+2*e27") > 0 Then
+                    code = Replace(code, "pmin+2*e27", "pmin"): nA1 = nA1 + 1
+                End If
+                If InStr(code, ">pmax-2*e27") > 0 Then
+                    code = Replace(code, "pmax-2*e27", "pmax"): nA1 = nA1 + 1
+                End If
+                If L1_Starts(s, "pmax:=") And InStr(code, "-2*e27;") > 0 Then
+                    code = Replace(code, "-2*e27;", "+50.0;"): nA1 = nA1 + 1
+                End If
+                If L1_Starts(s, "pmin:=") And InStr(code, "+2*e27;") > 0 Then
+                    code = Replace(code, "+2*e27;", "-10.0;"): nA1 = nA1 + 1
+                End If
+            End If
+            If InStr(code, "MAIN_c/(100+Abs(") > 0 And InStr(code, "+e27") = 0 Then
+                p3 = InStr(code, "MAIN_c/(100+Abs(")
+                p4 = InStr(p3, code, ")")
+                If p4 > p3 Then code = Left$(code, p4 - 1) & "+e27" & Mid$(code, p4)
+                nE27 = nE27 + 1
+            End If
+            If SW_PWR And InStr(code, "Power(") > 0 Then
+                c2 = L1_FixPowers(code)
+                If c2 <> code Then nPW = nPW + 1
+                code = c2
+            End If
+            pl = code & tl
+
+            '============ БЛОЧНЫЕ ПАТЧИ _0 (только файл *_0.txt, K2/K15/K16) ============
+            If is0 Then
+                ' --- С0-3: кэш Psat ---
+                If SW_PSC And s = "for i := 1 to chK do" And ix + 14 <= nLines Then
+                    If L4_M(Trim$(lines(ix + 1)), "^y1 := Ln\(Tk1\[i\] \+ 273\);") And _
+                       L4_M(Trim$(lines(ix + 13)), "^Pi\[i\] := Exp\(\(Ln\(fT \+ 273\.15\) - BB\) / AA\);") Then
+                        txt = "// LH3 v4 С0-3: кэш AA/BB - константы фита, не зависят от T" & vbCrLf
+                        txt = txt & "if (Not LH3_PsReady) then begin" & vbCrLf
+                        txt = txt & "  " & s & vbCrLf & "  begin" & vbCrLf
+                        For kx = 1 To 13
+                            txt = txt & "    " & Trim$(lines(ix + kx)) & vbCrLf
+                        Next kx
+                        txt = txt & "    if (Abs(AA02)<1e-12) then AA02:=1e-12; // LH3 v4: различимость точек" & vbCrLf
+                        txt = txt & "    AA_oi[i]:=AA01/AA02;" & vbCrLf
+                        txt = txt & "    BB_oi[i]:=(y1+y2+y3-AA_oi[i]*(x1+x2+x3))/3;" & vbCrLf
+                        txt = txt & "  end;" & vbCrLf
+                        txt = txt & "  LH3_PsReady:=true;" & vbCrLf
+                        txt = txt & "end;" & vbCrLf
+                        txt = txt & "for i := 1 to chK do" & vbCrLf & "begin" & vbCrLf
+                        txt = txt & "  Pi[i]:=Exp((Ln(fT+273.15)-BB_oi[i])/(AA_oi[i]+e27));" & vbCrLf
+                        txt = txt & "  if Pi[i]<0.001 then Pi[i]:=0.001;" & vbCrLf
+                        txt = txt & "end;"
+                        If L1_BalOk(lines, ix, 15, txt) Then
+                            L1_Push outArr, nOut, txt
+                            nPSC = nPSC + 1: adv = 15: GoTo LineDone
+                        Else
+                            nSkip = nSkip + 1
+                        End If
+                    End If
+                End If
+                ' --- С1б-12: OI_MODE=1 (бисекция по Рашфорду-Райсу) ---
+                If SW_OIM And s = "kmin := 10000000000000; kerr:=-3;" And ix + 32 <= nLines Then
+                    If L4_M(Trim$(lines(ix + 32)), "^eM := eMM; eG:= eMM; kerr:=-4;") Then
+                        txt = "// LH3 v4 OI_MODE=1: монотонная бисекция по функции Рашфорда-Райса" & vbCrLf
+                        txt = txt & "eMM := 0; eM := 0; kerr:=-3;" & vbCrLf
+                        txt = txt & "LH3_oKm := -1e9; LH3_oKn := 1e9;" & vbCrLf
+                        txt = txt & "for j := 1 to chK do" & vbCrLf & "begin" & vbCrLf
+                        txt = txt & "  LH3_oK := Pi[j] / (fP + e27);" & vbCrLf
+                        txt = txt & "  if LH3_oK > LH3_oKm then LH3_oKm := LH3_oK;" & vbCrLf
+                        txt = txt & "  if LH3_oK < LH3_oKn then LH3_oKn := LH3_oK;" & vbCrLf
+                        txt = txt & "end;" & vbCrLf
+                        txt = txt & "if (LH3_oKm <= 1) then eMM := 0" & vbCrLf
+                        txt = txt & "else if (LH3_oKn >= 1) then eMM := 1" & vbCrLf
+                        txt = txt & "else begin" & vbCrLf
+                        txt = txt & "  LH3_oLo := 0; LH3_oHi := 1; LH3_oFL := 0;" & vbCrLf
+                        txt = txt & "  for LH3_oIt := 1 to 60 do" & vbCrLf
+                        txt = txt & "  begin" & vbCrLf
+                        txt = txt & "    eM := (LH3_oLo + LH3_oHi) / 2;" & vbCrLf
+                        txt = txt & "    LH3_oFL := 0;" & vbCrLf
+                        txt = txt & "    for j := 1 to chK do" & vbCrLf
+                        txt = txt & "    begin" & vbCrLf
+                        txt = txt & "      LH3_oK := Pi[j] / (fP + e27);" & vbCrLf
+                        txt = txt & "      LH3_oDen := 1 + eM * (LH3_oK - 1);" & vbCrLf
+                        txt = txt & "      LH3_oFL := LH3_oFL + z[j] * (LH3_oK - 1) / (LH3_oDen + e27);" & vbCrLf
+                        txt = txt & "    end;" & vbCrLf
+                        txt = txt & "    if (Abs(LH3_oFL) < 1e-12) then break;" & vbCrLf
+                        txt = txt & "    if (LH3_oFL > 0) then LH3_oLo := eM else LH3_oHi := eM;" & vbCrLf
+                        txt = txt & "  end;" & vbCrLf
+                        txt = txt & "  eMM := (LH3_oLo + LH3_oHi) / 2;" & vbCrLf
+                        txt = txt & "  if (Abs(LH3_oFL) > 1e-6) then LH3_cnt_OIfail := LH3_cnt_OIfail + 1;" & vbCrLf
+                        txt = txt & "end;" & vbCrLf
+                        txt = txt & "if eMM > 0.999999 then eMM := 0.99999999;" & vbCrLf
+                        txt = txt & "if eMM < 1-0.9999999 then eMM := 1-0.99999999;" & vbCrLf
+                        txt = txt & "eM := eMM; eG:= eMM; kerr:=-4;"
+                        If L1_BalOk(lines, ix, 33, txt) Then
+                            L1_Push outArr, nOut, txt
+                            nOIM = nOIM + 1: adv = 33: GoTo LineDone
+                        Else
+                            nSkip = nSkip + 1
+                        End If
+                    End If
+                End If
+                ' --- OI_NORMFIX ---
+                If SW_NORM And s = "if (sx<1) then x[6]:=x[6]+(1-sx);" And ix + 4 <= nLines Then
+                    If L4_M(Trim$(lines(ix + 3)), "^end; kerr:=-5;$") Then
+                        txt = "// LH3 v4 OI_NORMFIX: доборы убраны, нормировка на текущую сумму" & vbCrLf
+                        txt = txt & "for j := 1 to chK do" & vbCrLf & "begin" & vbCrLf
+                        txt = txt & "  x[j] := x[j]/(sx+e27);" & vbCrLf
+                        txt = txt & "  y[j] := y[j]/(sy+e27);" & vbCrLf
+                        txt = txt & "end; kerr:=-5;" & vbCrLf
+                        txt = txt & "if (Abs(1-sx)>1e-6) or (Abs(1-sy)>1e-6) then LH3_cnt_OIfail:=LH3_cnt_OIfail+1;"
+                        If L1_BalOk(lines, ix, 5, txt) Then
+                            L1_Push outArr, nOut, txt
+                            nNORM = nNORM + 1: adv = 5: GoTo LineDone
+                        Else
+                            nSkip = nSkip + 1
+                        End If
+                    End If
+                End If
+                ' --- OI_EG_FIX ---
+                If SW_EGFIX And s = "for j := 1 to chK do" And ix + 9 <= nLines Then
+                    If L4_M(Trim$(lines(ix + 1)), "^xG\[j\] := x\[j\] \* M\[j\] / sx;") And _
+                       L4_M(Trim$(lines(ix + 4)), "^if \(yG\[j\] - xG\[j\] > 0\) then") Then
+                        txt = s & vbCrLf & "begin" & vbCrLf
+                        txt = txt & "  xG[j] := x[j] * M[j] / (sx+e27);" & vbCrLf
+                        txt = txt & "  yG[j] := y[j] * M[j] / (sy+e27);" & vbCrLf
+                        txt = txt & "end; kerr:=-6;" & vbCrLf
+                        txt = txt & "// LH3 v4 OI_EG_FIX: детерминированная beta_mass" & vbCrLf
+                        txt = txt & "eG := eMM * sy / (eMM * sy + (1 - eMM) * sx + e27);" & vbCrLf
+                        txt = txt & "eMM:= eG; kerr:=-7;"
+                        If L1_BalOk(lines, ix, 10, txt) Then
+                            L1_Push outArr, nOut, txt
+                            nEGFIX = nEGFIX + 1: adv = 10: GoTo LineDone
+                        Else
+                            nSkip = nSkip + 1
+                        End If
+                    End If
+                End If
+                ' --- OI_ROI_RS ---
+                If SW_ROI And L4_M(s, "^roI := 1 / sx \* \(1 - eMM\) \+ 1 / sz \* eMM;$") Then
+                    L1_Push outArr, nOut, "roI := 1 / (rs+e27) * (1 - eMM) + 1 / (sz+e27) * eMM; // LH3 v4 OI_ROI_RS"
+                    nROI = nROI + 1: GoTo LineDone
+                End If
+                ' --- SHC_FIXW ---
+                If SW_SHCW And s = "KG_r[NOMist, i]:= ISTO_ieg[NOMist];" And ix + 2 <= nLines Then
+                    If L4_M(Trim$(lines(ix + 1)), "^KL_r\[NOMist, i\]:= \(1 - ISTO_ieg\[NOMist\]\)\*\(1-ULc_r\[NOMist,6\]\);") Then
+                        txt = "KS_r[1, i]:= ISTO_ieg[NOMist]; // LH3 v4 SHC_FIXW: цель, не готовая доля" & vbCrLf
+                        txt = txt & "KS_r[2, i]:= (1 - ISTO_ieg[NOMist])*(1-ULc_r[NOMist,6]);" & vbCrLf
+                        txt = txt & "KS_r[3, i]:= (1 - ISTO_ieg[NOMist]) * (ULc_r[NOMist, 6]);"
+                        If L1_BalOk(lines, ix, 3, txt) Then
+                            L1_Push outArr, nOut, txt
+                            nSHCW = nSHCW + 1: adv = 3: GoTo LineDone
+                        Else
+                            nSkip = nSkip + 1
+                        End If
+                    End If
+                End If
+                ' --- SHC_NSCR ---
+                If SW_SHCN And s = "XX0[7]:=ABS(LS_r[NOMist, i]-L_summ); if (XX0[7]>12) then XX0[7]:=12;" And ix + 5 <= nLines Then
+                    txt = "XX07_l:=ABS(LS_r[NOMist, i]-L_summ); if (XX07_l>12) then XX07_l:=12; // LH3 v4 SHC_NSCR" & vbCrLf
+                    txt = txt & "XX09_l:=ABS(LS_r[NOMist, i]-L_water); if (XX09_l>12) then XX09_l:=12;" & vbCrLf
+                    txt = txt & "XX08_l:=730*Exp(-5.5*XX07_l*Ln(2.72))+350*Exp(-6*XX09_l*Ln(2.72));" & vbCrLf
+                    txt = txt & "KG_r[NOMist, i]:=  Abs(XX08_l*KG_r[NOMist, i] +1*KS_r[1, i])/(XX08_l+1);" & vbCrLf
+                    txt = txt & "KL_r[NOMist, i]:=  Abs(XX08_l*KL_r[NOMist, i] +1*KS_r[2, i])/(XX08_l+1);" & vbCrLf
+                    txt = txt & "KW_r[NOMist, i]:= Abs(XX08_l*KW_r[NOMist, i] +1*KS_r[3, i])/(XX08_l+1);"
+                    If L1_BalOk(lines, ix, 6, txt) Then
+                        L1_Push outArr, nOut, txt
+                        nSHCN = nSHCN + 1: adv = 6: GoTo LineDone
+                    Else
+                        nSkip = nSkip + 1
+                    End If
+                End If
+                ' --- LRC_NOSWAP ---
+                If SW_NOSWAP And L4_M(s, "^if \(NOMist>NOMsv\) then dPL_r\[NOMist,NOMshist\]:=e27-dPL_r\[NOMsv,NOMshsv\];") Then
+                    If Not L1_NextElse(lines, ix, nLines) Then
+                        L1_Push outArr, nOut, "// LH3 v4 LRC_NOSWAP: знак-своп убран (зеркало симметрично)"
+                        nNOSWAP = nNOSWAP + 1: GoTo LineDone
+                    End If
+                End If
+                ' --- LRC_ROSMO (K14: съедаем 1 строку, не 2) ---
+                If SW_ROSMO And L4_M(s, "^if \(RoLine>0\.2\) then RoLine:= \(RoLine\+1\)/2;$") Then
+                    If Not L1_NextElse(lines, ix, nLines) Then
+                        L1_Push outArr, nOut, "// LH3 v4 LRC_ROSMO: разрыв на 0.2 убран"
+                        nROSMO = nROSMO + 1: GoTo LineDone
+                    End If
+                End If
+                ' --- FR_EPS ---
+                If SW_FREPS And L4_M(s, "^aa3:=K_fff\*U_ri\[NOMist, NOMshist\]\*Power\(Abs\(P_ist\+dPL_r\[NOMist, NOMshist\]-P_sv\),0\.5\);") Then
+                    L1_Push outArr, nOut, "aa3:=K_fff*U_ri[NOMist, NOMshist]*(P_ist+dPL_r[NOMist, NOMshist]-P_sv)/Sqrt(Abs(P_ist+dPL_r[NOMist, NOMshist]-P_sv)+1e-4); // LH3 v4 FR_EPS"
+                    nFREPS = nFREPS + 1: GoTo LineDone
+                End If
+                If SW_FREPS And L4_M(s, "^if Power\(Abs\(P_ist\+dPL_r\[NOMist, NOMshist\]-P_sv\),0\.5\)< 0\.00001 then aa3:=0;$") Then
+                    If Not L1_NextElse(lines, ix, nLines) Then
+                        L1_Push outArr, nOut, "// LH3 v4 FR_EPS: мёртвая зона снята (гладкая форма)"
+                        nFREPS = nFREPS + 1: GoTo LineDone
+                    End If
+                End If
+                ' --- STOR_FIX4 ---
+                If SW_STOR4 And L4_M(s, "^XX0\[1\]:= V_ss / 3\.14159 /\(e27\+ ISTO_H\[nomber_i\]\) / \(e27\+ISTO_H\[nomber_i\]\);") Then
+                    L1_Push outArr, nOut, "XX0[1]:= 4 * V_ss / 3.14159 /(e27+ ISTO_H[nomber_i]) / (e27+ISTO_H[nomber_i]); // LH3 v4 STOR_FIX4: L=4V/(pi D^2)"
+                    nSTOR4 = nSTOR4 + 1: GoTo LineDone
+                End If
+                If SW_STOR4 And L4_M(s, "^RS_l\[nomber_i\]:= 3\.14159\*XX0\[2\] \* XX0\[2\]\*roL \* 36 \* MAIN_c/1 \* ISTO_H\[nomber_i\]\+1;") Then
+                    L1_Push outArr, nOut, "RS_l[nomber_i]:= 3.14159*XX0[2]*XX0[2]/4*roL * 36 * MAIN_c/1 * ISTO_H[nomber_i]+1; // LH3 v4 STOR_FIX4: pi c^2/4"
+                    nSTOR4 = nSTOR4 + 1: GoTo LineDone
+                End If
+                If SW_STOR4 And L4_M(s, "^RS_w\[nomber_i\]:= 3\.14159\*XX0\[2\] \* XX0\[2\] \* roW\*36\*MAIN_c/1\* ISTO_H\[nomber_i\]\+1;") Then
+                    L1_Push outArr, nOut, "RS_w[nomber_i]:= 3.14159*XX0[2]*XX0[2]/4* roW*36*MAIN_c/1* ISTO_H[nomber_i]+1; // LH3 v4 STOR_FIX4"
+                    nSTOR4 = nSTOR4 + 1: GoTo LineDone
+                End If
+                ' --- С0-1: заголовок процедуры OI ---
+                If SW_CNT And s = "procedure T_Hmodel_UPDT2_0.OI(u1, u2, u3, u4, u5, u6, Tfact, Pfact: Double);" Then
+                    L1_Push outArr, nOut, pl
+                    oiProc = True
+                    GoTo LineDone
+                End If
+            End If
+
+            '============ A11: конец ОИ-петли -> пересчёт фаз (все файлы) ============
+            If SW_A11 And curLoopO And L4_M(s, "^end;?$") And ddA = curLoopLvl And Len(spTxt) > 0 _
+               And InStr(spTxt, "XX0[14]:=XX0[12]/(XX0[13]+e27);") > 0 Then
+                txt = "// LH3 v4 A11: финальный пересчёт фазовых расходов по итоговому aa2"
+                bal = 0
+                arr = Split(Mid$(spTxt, 2), "|")
+                For Each tpv In arr
+                    If Len(tpv) > 0 Then
+                        txt = txt & vbCrLf & CStr(tpv)
+                        bal = bal + L1_Delta(CStr(tpv))
+                    End If
+                Next tpv
+                If bal = 0 Then
+                    L1_Push outArr, nOut, txt
+                    nA11 = nA11 + 1
+                Else
+                    nSkip = nSkip + 1
+                End If
+                curLoopO = False: spActive = False: spTxt = ""
+            End If
+
+            '============ ПОСТРОЧНЫЕ ПРАВИЛА ============
+            ' --- Т-2/Т-1: канонический расход ребра (K4) ---
+            If SW_T2 And L4_M(s, "^FR_C\((\d+),(\d+),(\d+),([^,]+),([^,]+),([^;]+)\);") And ix + 2 <= nLines Then
+                t2dp = Trim$(lines(ix + 1)): t2fp = Trim$(lines(ix + 2))
+                If L4_M(t2dp, "^(Fc_r\[(\d+),(\d+)\]):=\(6\*Fc_r\[\d+,\d+\]-V_ri\[\d+,\d+\]\*aa3\)/7;") And _
+                   L4_M(t2fp, "^(Fc\w+):=\(\1\*0\.08\+aa3\)/1\.08;") Then
+                    t2N = CLng(L4_SM(s, "^FR_C\((\d+)", 0))
+                    t2S = CLng(L4_SM(s, "^FR_C\(\d+,(\d+)", 0))
+                    t2Pown = L4_SM(s, "^FR_C\(\d+,\d+,\d+,([^,]+),([^,]+)", 0)
+                    t2Ps = L4_SM(s, "^FR_C\(\d+,\d+,\d+,([^,]+),([^,]+)", 1)
+                    t2corr = "(1-p" & t2Pown & "*(1-p" & t2Ps & "))"
+                    rr = L4_SM(t2dp, "^(Fc_r\[(\d+),(\d+)\])", 0)
+                    rrr = L4_SM(t2fp, "^(Fc\w+):=", 0)
+                    own = "GTc" & t2Pown & "*Fm" & t2Pown
+                    nb = "GTc" & t2Ps & "*Fm" & t2Ps
+                    txt = "if (" & own & "<100*e27) and (" & nb & ">100*e27) then" & vbCrLf & "begin" & vbCrLf
+                    If EdgePairs.Exists(CStr(t2S) & "|" & CStr(t2N)) Then
+                        txt = txt & "  // LH3 v4 Т-2: я тупик, сосед жив - копия расхода (штуцер СОСЕДА #" & CStr(t2S) & ")" & vbCrLf
+                        txt = txt & "  " & rr & ":=-Fc_r[" & CStr(t2S) & "," & CStr(t2N) & "];  kerr:= -971;" & vbCrLf
+                        txt = txt & "  " & rrr & ":=(" & rrr & "*0.08-Fc_r[" & CStr(t2S) & "," & CStr(t2N) & "])/1.08;  kerr:= -972;" & vbCrLf
+                    Else
+                        txt = txt & "  // LH3 v4 Т-2: я мёртв, сосед - граница - явный ноль" & vbCrLf
+                        txt = txt & "  " & rr & ":=0;  kerr:= -971;" & vbCrLf
+                        txt = txt & "  " & rrr & ":=(" & rrr & "*0.08)/1.08;  kerr:= -972;" & vbCrLf
+                    End If
+                    txt = txt & "end else if (" & own & "<100*e27) and (" & nb & "<100*e27) then" & vbCrLf & "begin" & vbCrLf
+                    txt = txt & "  " & rr & ":=0;  kerr:= -973;" & vbCrLf
+                    txt = txt & "  " & rrr & ":=(" & rrr & "*0.08)/1.08;  kerr:= -974;" & vbCrLf
+                    txt = txt & "end else begin" & vbCrLf
+                    txt = txt & "  " & pl & vbCrLf
+                    txt = txt & "  " & Replace(t2dp, "-V_ri[", "-" & t2corr & "*V_ri[") & vbCrLf
+                    txt = txt & "  " & Replace(t2fp, "+aa3)/1.08;", "+aa3*" & t2corr & ")/1.08;") & vbCrLf
+                    txt = txt & "end;  kerr:= -975; // LH3 v4 Т-2/Т-1: пара равнозначных расходов"
+                    If L1_BalOk(lines, ix, 3, txt) Then
+                        L1_Push outArr, nOut, txt
+                        nT2 = nT2 + 1: adv = 3: GoTo LineDone
+                    Else
+                        nSkip = nSkip + 1
+                    End If
+                End If
+            End If
+
+            ' --- Т-3: гашение U_ri при aa3<=0 (K11) ---
+            If SW_T3 And L4_M(s, "^U_ri\[(\d+),(\d+)\]:=U_ri\[\d+,\d+\]/aa3;") Then
+                If Not L1_NextElse(lines, ix, nLines) Then
+                    nm = "U_ri[" & L4_SM(s, "^U_ri\[(\d+),", 0) & "," & L4_SM(s, "^U_ri\[\d+,(\d+)\]", 0) & "]"
+                    L1_SplitStmt pl, stmt, rest
+                    L1_Push outArr, nOut, "if (aa3<=0) then " & nm & ":=0 else if (" & nm & ">0.000025) then " & stmt & " " & rest & " // LH3 v4 Т-3"
+                    nT3 = nT3 + 1: GoTo LineDone
+                End If
+            End If
+
+            ' --- A6: кламп подушки (K10) ---
+            If SW_A6 And curN > 0 And L4_M(s, "^XX0\[14\]:=XX0\[12\]/\(XX0\[13\]\+e27\);") Then
+                vmin = "0.005*10*(e27+10*ISTO_v[" & CStr(curN) & "])"
+                txt = "if (XX0[13]<" & vmin & ") then begin XX0[13]:=" & vmin & ";  kerr:= -961; end; // LH3 v4 A6: кламп Vmin" & vbCrLf
+                txt = txt & "XX0[14]:=XX0[12]/(XX0[13]+e27);  kerr:= -962; // LH3 v4 A6: без взрыва"
+                L1_Push outArr, nOut, txt
+                nA6 = nA6 + 1: GoTo LineDone
+            End If
+
+            ' --- F12: dT/T (K7) ---
+            If SW_F12 And L4_M(s, "^aa2:=\(0\.5\*aa2\+\(aa2\+1\)\*XX0\[14\]\*XX0\[15\]-1\)/1\.5;") Then
+                nm = L1_FindTc(lines, ix)
+                If Len(nm) > 2 Then
+                    pv = "LH3_Tprev_" & Mid$(nm, 3)
+                    txt = "if (" & pv & "=0) then " & pv & ":=" & nm & "; // LH3 v4 F12: старт" & vbCrLf
+                    txt = txt & "aa2:=(0.5*aa2+((aa2+1)*XX0[14]*XX0[15]*(273.15+" & nm & ")/(273.15+" & pv & ")-1))/1.5;  kerr:= -963; // LH3 v4 F12: dT/T" & vbCrLf
+                    txt = txt & pv & ":=" & nm & ";"
+                    L1_Push outArr, nOut, txt
+                    nF12 = nF12 + 1: GoTo LineDone
+                Else
+                    nF12m = nF12m + 1
+                End If
+            End If
+
+            ' --- B14: клампы долей ---
+            If SW_B14 And L4_M(s, "^XX0\[3\]:=1-(\w+);") Then
+                If Not L1_NextElse(lines, ix, nLines) Then
+                    txt = pl & vbCrLf
+                    txt = txt & "if (XX0[3]>1) then begin XX0[3]:=1;  kerr:= -964; end; // LH3 v4 B14" & vbCrLf
+                    txt = txt & "if (XX0[3]<0.01) then begin XX0[3]:=0.01;  kerr:= -964; end; // LH3 v4 B14"
+                    L1_Push outArr, nOut, txt
+                    nB14 = nB14 + 1: GoTo LineDone
+                End If
+            End If
+
+            ' --- B11: нижний кламп dL ---
+            If SW_B11 And L4_M(s, "^dL:=0\.55;") Then
+                If Not L1_NextElse(lines, ix, nLines) Then
+                    L1_Push outArr, nOut, pl
+                    L1_Push outArr, nOut, "if (dL<-0.55) then begin dL:=-0.55;  kerr:= -965; end; // LH3 v4 B11"
+                    nB11 = nB11 + 1: GoTo LineDone
+                End If
+            End If
+
+            ' --- B12: снятие голого гейта (K13: только перед одиночным оператором роста) ---
+            If SW_B12 And s = "if (dL=3) then" And ix < nLines Then
+                nx = Trim$(lines(ix + 1))
+                If L4_M(nx, "^(\w+):=\1\+0\.01\*XX0\[8\];") Then
+                    nB12d = nB12d + 1
+                    GoTo LineDone
+                End If
+            End If
+
+            ' --- B12: гейт клапана роста ---
+            If SW_B12 And L4_M(s, "^(\w+):=\1\+0\.01\*XX0\[8\];") Then
+                nm = L4_SM(s, "^(\w+):=", 0)
+                L1_SplitStmt pl, stmt, rest
+                L1_Push outArr, nOut, "if (dL=3) and ((LIM_P_max<=0) or (" & nm & "+0.01*XX0[8]<LIM_P_max)) then " & stmt & " " & rest & " // LH3 v4 B12: гейт клапана роста"
+                nB12 = nB12 + 1: GoTo LineDone
+            End If
+
+            ' --- B5: третья фаза в лимитерах ---
+            If SW_B5 And L4_M(s, "^W_out:=W_out\*(\w+)/(S_out\+e27);") Then
+                If Not L1_NextElse(lines, ix, nLines) Then
+                    L1_Push outArr, nOut, pl
+                    L1_Push outArr, nOut, "G_out:=G_out*" & L4_SM(s, "^W_out:=W_out\*(\w+)", 0) & "/(S_out+e27);  kerr:= -966; // LH3 v4 B5"
+                    nB5 = nB5 + 1: GoTo LineDone
+                End If
+            End If
+            If SW_B5 And L4_M(s, "^W_in:=W_in\*(\w+)/(S_in\+e27);") Then
+                If Not L1_NextElse(lines, ix, nLines) Then
+                    L1_Push outArr, nOut, pl
+                    L1_Push outArr, nOut, "G_in:=G_in*" & L4_SM(s, "^W_in:=W_in\*(\w+)", 0) & "/(S_in+e27);  kerr:= -966; // LH3 v4 B5"
+                    nB5 = nB5 + 1: GoTo LineDone
+                End If
+            End If
+
+            ' --- A9: перекладки фаз убраны ---
+            If SW_A9 And (L4_M(s, "^L_out:=L_out\+W_out-\(3600\*MAIN_c\*[^\)]+\+W_in\);") _
+                       Or L4_M(s, "^G_out:=G_out\+L_out-\(3600\*MAIN_c\*[^\)]+\+L_in\);") _
+                       Or L4_M(s, "^L_out:=L_out\+G_out-\(3600\*MAIN_c\*[^\)]+\+G_in\);")) Then
+                If Not L1_NextElse(lines, ix, nLines) Then
+                    L1_Push outArr, nOut, "// LH3 v4 A9: перекладка фаз убрана"
+                    nA9 = nA9 + 1: GoTo LineDone
+                End If
+            End If
+
+            ' --- F11: невязка без K_svod ---
+            If SW_F11 And L4_M(s, "^aa1:=K_svod\*\(S_out-S_in\)/K_fff;") Then
+                L1_SplitStmt pl, stmt, rest
+                L1_Push outArr, nOut, "aa1:=(S_out-S_in); " & rest & " // LH3 v4 F11: невязка без K_svod"
+                nF11 = nF11 + 1: GoTo LineDone
+            End If
+            ' --- F11: дампинг шага (K12: забираем и эвристику 1.82) ---
+            If SW_F11 And s = "if (Abs(aa1)>1.2*Abs(aa004)) then" And ix < nLines Then
+                If L4_M(Trim$(lines(ix + 1)), "^aa3:=aa3\*1\.82;") Then
+                    txt = "if (Abs(aa1)>1.05*Abs(aa004)) then" & vbCrLf
+                    txt = txt & "begin W_damp:=W_damp*0.5;  kerr:= -967; end" & vbCrLf
+                    txt = txt & "else begin if (W_damp<1) then begin if (W_damp*2>1) then W_damp:=1 else W_damp:=W_damp*2;  kerr:= -968; end; end; // LH3 v4 F11"
+                    If L1_BalOk(lines, ix, 2, txt) Then
+                        L1_Push outArr, nOut, txt
+                        nF11 = nF11 + 2: adv = 2: GoTo LineDone
+                    Else
+                        nSkip = nSkip + 1
+                    End If
+                End If
+            End If
+            If SW_F11 And L4_M(s, "^aa3:=aa3\*1\.82;") Then
+                If Not L1_NextElse(lines, ix, nLines) Then
+                    L1_Push outArr, nOut, "// LH3 v4 F11: эвристика 1.82 заменена W_damp-механикой"
+                    nF11 = nF11 + 1: GoTo LineDone
+                End If
+            End If
+            If SW_F11 And L4_M(s, "^aa2:=aa2-0\.52\*aa1/aa3;") Then
+                L1_SplitStmt pl, stmt, rest
+                L1_Push outArr, nOut, "aa2:=aa2-W_damp*aa1/(aa3+e27); " & rest & " // LH3 v4 F11: шаг по якобиану"
+                nF11 = nF11 + 1: GoTo LineDone
+            End If
+            If SW_F11 And s = "if (Abs(aa1)<0.0005) then" Then
+                L1_Push outArr, nOut, "if (Abs(aa1)<1e-4*(Abs(S_in)+Abs(S_out)+0.1)) then  // LH3 v4 F11: относительный критерий"
+                nF11 = nF11 + 1: GoTo LineDone
+            End If
+            If SW_F11 And L4_M(s, "^while ttyr<\s*49 do begin") Then
+                L1_Push outArr, nOut, "W_damp:=1;  kerr:= -969; // LH3 v4 F11: сброс дампинга"
+                L1_Push outArr, nOut, pl
+                curLoopO = True: curLoopLvl = dd: spActive = False: spTxt = ""
+                GoTo LineDone
+            End If
+
+            ' --- С0-1: счётчик 24К ---
+            If SW_CNT And L4_M(s, "^tty_1:=\s*0;") Then
+                L1_Push outArr, nOut, pl
+                L1_Push outArr, nOut, "LH3_cnt_24K:=LH3_cnt_24K+1;  kerr:= -970; // LH3 v4 С0-1"
+                nC24 = nC24 + 1: GoTo LineDone
+            End If
+
+            ' --- С0-4: печать B2 ---
+            If SW_B2P And (Not b2done) And L1_Starts(s, "Stor_m(") Then
+                L1_Push outArr, nOut, pl
+                L1_Push outArr, nOut, "Log(' LH3 B2: V_ss='+cstrf(V_ss,3)+' Vg_s='+cstrf(Vg_s,3)+' XX0[12]='+cstrf(XX0[12],3));  kerr:= -992; // LH3 v4 С0-4"
+                b2done = True: nB2P = nB2P + 1: GoTo LineDone
+            End If
+
+            ' --- С0-8: замер K_fff (K6) ---
+            If SW_KFP And (Not kfffdone) And L1_Starts(s, "S_out:=K_fff*(U_ri[") Then
+                L1_Push outArr, nOut, pl
+                L1_Push outArr, nOut, "if (LH3_cnt_24K=0) and (LH3_cnt_OI=0) then begin Log(' LH3 K_fff: S_in='+cstrf(S_in,3)+' S_out='+cstrf(S_out,3)); kerr:= -993; end; // LH3 v4 С0-8"
+                kfffdone = True: nKFP = nKFP + 1: GoTo LineDone
+            End If
+
+            ' --- A2: захват гейта ttyr=48 ---
+            If SW_A2 And g48 = 0 And InStr(pl, "ttyr=48) then") > 0 Then
+                hold = pl: g48 = 1
+                GoTo LineDone
+            End If
+
+            ' --- номер текущего узла ---
+            p1 = InStr(pl, "Давление и расход")
+            If p1 > 0 Then
+                p2 = InStr(1, pl, "#")
+                If p2 > 0 And p2 < p1 Then curN = Val(Trim$(Mid$(pl, p2 + 1, p1 - p2 - 1)))
+            End If
+
+            ' --- страж входа ---
+            If curN > 0 And InStr(s, "aa2") = 1 And InStr(pl, "INT_PRT-1") > 0 Then
+                nm = Mid$(pl, 1, InStr(pl, "INT_PRT-1") - 1)
+                p2 = InStrRev(nm, "+")
+                If p2 > 0 Then nm = Mid$(nm, 1, p2 - 1)
+                p2 = InStrRev(nm, "=")
+                If p2 > 0 Then nm = Trim$(Mid$(nm, p2 + 1))
+                L1_Push outArr, nOut, pl
+                If Len(nm) > 0 And ddA > 0 Then
+                    totB = totB + 1
+                    If PD.Exists(nm) Then gv = PD(nm) Else gv = "100"
+                    L1_Push outArr, nOut, "if " & L1_Bad(nm) & " then begin"
+                    L1_Push outArr, nOut, "  " & L1_Rec("NaN_in[" & CStr(curN) & "]", nm, curN, 1)
+                    L1_Push outArr, nOut, "  if " & L1_Live("ISTO_p[" & CStr(curN) & "]") & " then begin"
+                    If L1_Simple(nm) Then L1_Push outArr, nOut, "    " & nm & ":=ISTO_p[" & CStr(curN) & "];"
+                    L1_Push outArr, nOut, "    aa2:=ISTO_p[" & CStr(curN) & "];"
+                    L1_Push outArr, nOut, "  end else begin"
+                    If L1_Simple(nm) Then L1_Push outArr, nOut, "    " & nm & ":=" & gv & ";"
+                    L1_Push outArr, nOut, "    aa2:=" & gv & ";"
+                    L1_Push outArr, nOut, "  end;"
+                    L1_Push outArr, nOut, "  Log(' LH3 freeze: узел #" & CStr(curN) & " - " & nm & " NaN/бред - last-good/пресет');  kerr:= -795;"
+                    L1_Push outArr, nOut, "end else if " & L1_RngBad(nm) & " then begin"
+                    L1_Push outArr, nOut, "  " & L1_Rec("NaN_in[" & CStr(curN) & "]", "диапазон: " & nm, curN, 3)
+                    L1_Push outArr, nOut, "  if " & L1_Live("ISTO_p[" & CStr(curN) & "]") & " then begin"
+                    If L1_Simple(nm) Then L1_Push outArr, nOut, "    " & nm & ":=ISTO_p[" & CStr(curN) & "];"
+                    L1_Push outArr, nOut, "    aa2:=ISTO_p[" & CStr(curN) & "];"
+                    L1_Push outArr, nOut, "  end else begin"
+                    If L1_Simple(nm) Then L1_Push outArr, nOut, "    " & nm & ":=" & gv & ";"
+                    L1_Push outArr, nOut, "    aa2:=" & gv & ";"
+                    L1_Push outArr, nOut, "  end;"
+                    L1_Push outArr, nOut, "  Log(' LH3 freeze: узел #" & CStr(curN) & " - " & nm & " вне диапазона LIM_P - last-good/пресет');  kerr:= -796;"
+                    L1_Push outArr, nOut, "end;"
+                End If
+                GoTo LineDone
+            End If
+
+            ' --- страж хвоста (заморозка зеркала) ---
+            If L1_Starts(s, "ISTO_p[") Then
+                p1 = InStr(pl, "ISTO_p[") + 7
+                p2 = InStr(p1, pl, "]")
+                n = 0
+                If p2 > p1 Then n = Val(Trim$(Mid$(pl, p1, p2 - p1)))
+                p1 = InStr(p2, pl, "=")
+                nm = ""
+                If p1 > 0 Then
+                    nm = Trim$(Mid$(pl, p1 + 1))
+                    i = InStr(nm, ";")
+                    If i > 0 Then nm = Left$(nm, i - 1)
+                    nm = Trim$(nm)
+                End If
+                i = InStr(pl, ";")
+                If i > 0 Then rest = Trim$(Mid$(pl, i + 1)) Else rest = ""
+                If n > 0 And n <= SZ And Len(nm) > 0 And Not L4_M(nm, "^\d") Then
+                    totH = totH + 1
+                    If PD.Exists(nm) Then gv = PD(nm) Else gv = "100"
+                    If csh1 Then
+                        cond = L1_Ok(nm) & " && !(" & L1_RngBad(nm) & ")"
+                    Else
+                        cond = L1_Ok(nm) & " and (Not (" & L1_RngBad(nm) & "))"
+                    End If
+                    L1_Push outArr, nOut, "if " & cond & " then ISTO_p[" & CStr(n) & "]:=" & nm & ";"
+                    If Len(rest) > 0 Then L1_Push outArr, nOut, rest
+                    L1_Push outArr, nOut, "if " & L1_Bad(nm) & " then begin"
+                    L1_Push outArr, nOut, "  " & L1_Rec("NaN_t[" & CStr(n) & "]", nm, n, 2)
+                    L1_Push outArr, nOut, "  if " & L1_Live("ISTO_p[" & CStr(n) & "]") & " then begin"
+                    If L1_Simple(nm) Then L1_Push outArr, nOut, "    " & nm & ":=ISTO_p[" & CStr(n) & "];"
+                    L1_Push outArr, nOut, "  end else begin"
+                    If L1_Simple(nm) Then L1_Push outArr, nOut, "    " & nm & ":=" & gv & ";"
+                    L1_Push outArr, nOut, "  end;"
+                    L1_Push outArr, nOut, "  Log(' LH3 freeze: узел #" & CStr(n) & " - " & nm & " NaN/бред - зеркало НЕ обновлено');  kerr:= -797;"
+                    L1_Push outArr, nOut, "end else if " & L1_RngBad(nm) & " then begin"
+                    L1_Push outArr, nOut, "  " & L1_Rec("NaN_t[" & CStr(n) & "]", "диапазон: " & nm, n, 4)
+                    L1_Push outArr, nOut, "  if " & L1_Live("ISTO_p[" & CStr(n) & "]") & " then begin"
+                    If L1_Simple(nm) Then L1_Push outArr, nOut, "    " & nm & ":=ISTO_p[" & CStr(n) & "];"
+                    L1_Push outArr, nOut, "  end else begin"
+                    If L1_Simple(nm) Then L1_Push outArr, nOut, "    " & nm & ":=" & gv & ";"
+                    L1_Push outArr, nOut, "  end;"
+                    L1_Push outArr, nOut, "  Log(' LH3 freeze: узел #" & CStr(n) & " - " & nm & " вне диапазона - зеркало НЕ обновлено');  kerr:= -798;"
+                    L1_Push outArr, nOut, "end;"
+                Else
+                    L1_Push outArr, nOut, pl
+                End If
+                GoTo LineDone
+            End If
+
+            ' --- HEALTH-скан ---
+            If SW_SCAN And (Not hDone) And InStr(pl, "У И: n=") > 0 And InStr(pl, "Б У И") = 0 Then
+                L1_Push outArr, nOut, pl
+                L1_Push outArr, nOut, L1_Scan4(SZ, IIf(SW_SYM, L1_EdgeInit(EdgePairs), ""), hasFcR)
+                hDone = True
+                GoTo LineDone
+            End If
+
+            ' --- Ф4 + обычный вывод ---
+            If L1_CyrOut(pl) And InStr(pl, "LH3") = 0 Then
+                L1_Push outArr, nOut, "// " & pl
+                totC = totC + 1
+            Else
+                L1_Push outArr, nOut, pl
+            End If
+
+LineDone:
+            If (Not noTail) And (Not dDone) And declAt > 0 And ix >= declAt Then
+                L1_Push outArr, nOut, L1_Decls4(SZ, tprevList, nEdges)
+                dDone = True
+            End If
+            dd = dd + L1_SumDelta(lines, ix, adv)
+            ix = ix + adv
+        Loop
+
+        If nOut > 0 Then ReDim Preserve outArr(0 To nOut - 1) Else ReDim outArr(0 To 0): outArr(0) = ""
+        txt = Join(outArr, eol)
+        If endsNL Then txt = txt & eol
+        L1_WriteText pth & outn, txt, enc
+        If (Not dDone) And (Not noTail) Then nNoDecl = nNoDecl + 1
+    Next fi
+
+    rep = "LH3 v4.1: готово (стражи v21 + A1/A2 + весь перечень м2.5)." & vbCrLf
+    rep = rep & "Узлов (chi) = " & CStr(chi) & ", размер массива = " & CStr(SZ) & IIf(csh1, ", стиль C#", ", стиль pas") & vbCrLf
+    rep = rep & "A1: " & CStr(nA1) & ", A2 (ttyr=48): " & CStr(nA2) & ", +e27 в K_v: " & CStr(nE27) & vbCrLf
+    rep = rep & "Стражей входа: " & CStr(totB) & ", хвостов: " & CStr(totH) & ", Ф4-бред-декл: " & CStr(totC) & vbCrLf
+    rep = rep & "Т-2/Т-1: " & CStr(nT2) & ", Т-3: " & CStr(nT3) & ", A6: " & CStr(nA6) & vbCrLf
+    rep = rep & "F12: " & CStr(nF12) & " (пропусков: " & CStr(nF12m) & "), B14: " & CStr(nB14) & ", B11: " & CStr(nB11) & vbCrLf
+    rep = rep & "B12: " & CStr(nB12) & " (гейтов снято: " & CStr(nB12d) & "), B5: " & CStr(nB5) & ", A9: " & CStr(nA9) & vbCrLf
+    rep = rep & "F11: " & CStr(nF11) & ", 24К: " & CStr(nC24) & ", A11: " & CStr(nA11) & vbCrLf
+    rep = rep & "B8: " & CStr(nB8M) & ", B15: " & CStr(nB15) & "/" & CStr(nB15b) & ", B2P: " & CStr(nB2P) & ", KFP: " & CStr(nKFP) & ", Power: " & CStr(nPW) & vbCrLf
+    rep = rep & "_0: Psat=" & CStr(nPSC) & " OI_MODE=" & CStr(nOIM) & " NORM=" & CStr(nNORM) & " EGFIX=" & CStr(nEGFIX) & " ROI=" & CStr(nROI) & vbCrLf
+    rep = rep & "SHCW=" & CStr(nSHCW) & " SHCN=" & CStr(nSHCN) & " NOSWAP=" & CStr(nNOSWAP) & " ROSMO=" & CStr(nROSMO) & " STOR4=" & CStr(nSTOR4) & " FREPS=" & CStr(nFREPS) & vbCrLf
+    rep = rep & "Рёбер FR_C: " & CStr(nEdges) & ", Tprev-полей: " & CStr(Tprev.Count) & vbCrLf
+    rep = rep & "ПРОПУЩЕНО по балансу/else: " & CStr(nSkip) & ", файлов без деклараций: " & CStr(nNoDecl) & vbCrLf
+    If csh1 Then rep = rep & "ВНИМАНИЕ: определёрован C#-стиль - блочные патчи генерируются только для Pascal." & vbCrLf
+    rep = rep & "Файлы: *_LH3.txt (исходные м2 не тронуты)."
+    MsgBox rep, vbInformation, "LH3 v4.1"
+    Exit Sub
+
+Fail:
+    MsgBox "LH3 v4.1: ошибка " & CStr(Err.Number) & " - " & Err.Description & vbCrLf & _
+           "Файл: " & fn & ", строка: " & CStr(ix), vbCritical, "LH3 v4.1"
+End Sub
+'=====END=====
+

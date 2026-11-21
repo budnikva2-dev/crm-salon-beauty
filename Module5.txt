@@ -1,0 +1,1922 @@
+Dim back_step  As String
+Dim back_i, back_j As Single
+Dim chzc As Single
+Dim allch As Single
+
+Sub Gen_oi_presets()
+Dim ffff As String
+ffff = "chK=6;" + Chr(13) + Chr(10) + Chr(13) + Chr(10)
+
+For i = 1 To 6
+ffff = ffff + "ro_c[" + Str(i) + "]=" + Str(Cells(20 + i, 81).Value / 1000) + ";" + Chr(13) + Chr(10)
+ffff = ffff + "M[" + Str(i) + "]=" + Str(Cells(20 + i, 74).Value) + ";" + Chr(13) + Chr(10)
+ffff = ffff + "Pk1[" + Str(i) + "]=" + Str(Cells(20 + i, 75).Value) + ";" + Chr(13) + Chr(10)
+ffff = ffff + "Tk1[" + Str(i) + "]=" + Str(Cells(20 + i, 76).Value) + ";" + Chr(13) + Chr(10)
+ffff = ffff + "Pk2[" + Str(i) + "]=" + Str(Cells(20 + i, 77).Value) + ";" + Chr(13) + Chr(10)
+ffff = ffff + "Tk2[" + Str(i) + "]=" + Str(Cells(20 + i, 78).Value) + ";" + Chr(13) + Chr(10)
+ffff = ffff + "Pk3[" + Str(i) + "]=" + Str(Cells(20 + i, 79).Value) + ";" + Chr(13) + Chr(10)
+ffff = ffff + "Tk3[" + Str(i) + "]=" + Str(Cells(20 + i, 80).Value) + ";" + Chr(13) + Chr(10)
+ffff = ffff + Chr(13) + Chr(10)
+Next i
+ffff = Replace(Replace(ffff, " ", ""), "=.", "=0.")
+Cells(5, 74).Value = Replace(Replace(ffff, " ", ""), "=-.", "=-0.")
+End Sub
+
+
+Function golib0(ist As String)
+aa1 = Replace(ist, " ", "")
+aa1 = REP_stro((aa1))
+i = 63
+aai = REP_stro((Worksheets("CODE").Cells(i, 54).Value))
+sto_p = 0
+Do
+If aa1 = aai Then
+sto_p = i
+Else
+i = i + 1
+aai = REP_stro((Worksheets("CODE").Cells(i, 54).Value))
+If Len(aai) < 2 Then sto_p = -1
+End If
+Loop While sto_p = 0
+
+If sto_p > 0 Then
+back_step = ActiveSheet.Name
+back_j = ActiveCell.Column
+back_i = ActiveCell.Row
+Worksheets("CODE").Activate
+Worksheets("CODE").Cells(sto_p, 54).Select
+Else
+MsgBox ("В библиотеке источник не найден. Возможно библиотека не актуальна!")
+End If
+
+End Function
+
+Sub GO_lib_1()
+i = 1
+golib0 (Cells(i + 8, 12).Value)
+End Sub
+Sub GO_lib_2()
+i = 2
+golib0 (Cells(i + 8, 12).Value)
+End Sub
+Sub GO_lib_3()
+i = 3
+golib0 (Cells(i + 8, 12).Value)
+End Sub
+Sub GO_lib_4()
+i = 4
+golib0 (Cells(i + 8, 12).Value)
+End Sub
+Sub GO_lib_5()
+i = 5
+golib0 (Cells(i + 8, 12).Value)
+End Sub
+Sub GO_lib_6()
+i = 6
+golib0 (Cells(i + 8, 12).Value)
+End Sub
+Sub GO_lib_7()
+i = 7
+golib0 (Cells(i + 8, 12).Value)
+End Sub
+Sub GO_lib_8()
+i = 8
+golib0 (Cells(i + 8, 12).Value)
+End Sub
+Sub GO_lib_9()
+i = 9
+golib0 (Cells(i + 8, 12).Value)
+End Sub
+
+Sub GO_lib_10()
+i = 10
+golib0 (Cells(i + 8, 12).Value)
+End Sub
+
+Sub GO_9()
+www = Cells(9, 12).Value
+www = Replace(www, " ", "")
+If IsNumeric(www) = True Then
+aa2 = 2
+On Error GoTo s159
+If Worksheets("CODE").Cells(62 + www, 54).Interior.Color = Worksheets("CODE").Cells(61, 48).Interior.Color Then
+Worksheets(Cells(62 + www, 54).Value).Activate
+aa2 = 1
+End If
+Else
+aa2 = 2
+On Error GoTo s159
+Worksheets(www).Activate
+aa2 = 1
+End If
+s159:
+If aa2 = 2 Then
+MsgBox (" Данного листа не существует!")
+End If
+End Sub
+Sub GO_10()
+www = Cells(10, 12).Value
+www = Replace(www, " ", "")
+If IsNumeric(www) = True Then
+If Worksheets("CODE").Cells(62 + www, 54).Interior.Color = Worksheets("CODE").Cells(61, 48).Interior.Color Then Worksheets(Cells(62 + www, 54).Value).Activate
+Else
+Worksheets(www).Activate
+End If
+End Sub
+Sub GO_11()
+www = Cells(11, 12).Value
+www = Replace(www, " ", "")
+If IsNumeric(www) = True Then
+If Worksheets("CODE").Cells(62 + www, 54).Interior.Color = Worksheets("CODE").Cells(61, 48).Interior.Color Then Worksheets(Cells(62 + www, 54).Value).Activate
+Else
+Worksheets(www).Activate
+End If
+End Sub
+Sub GO_12()
+www = Cells(12, 12).Value
+www = Replace(www, " ", "")
+If IsNumeric(www) = True Then
+If Worksheets("CODE").Cells(62 + www, 54).Interior.Color = Worksheets("CODE").Cells(61, 48).Interior.Color Then Worksheets(Cells(62 + www, 54).Value).Activate
+Else
+Worksheets(www).Activate
+End If
+End Sub
+Sub GO_13()
+www = Cells(13, 12).Value
+www = Replace(www, " ", "")
+If IsNumeric(www) = True Then
+If Worksheets("CODE").Cells(62 + www, 54).Interior.Color = Worksheets("CODE").Cells(61, 48).Interior.Color Then Worksheets(Cells(62 + www, 54).Value).Activate
+Else
+Worksheets(www).Activate
+End If
+End Sub
+Sub GO_14()
+www = Cells(14, 12).Value
+www = Replace(www, " ", "")
+If IsNumeric(www) = True Then
+If Worksheets("CODE").Cells(62 + www, 54).Interior.Color = Worksheets("CODE").Cells(61, 48).Interior.Color Then Worksheets(Cells(62 + www, 54).Value).Activate
+Else
+Worksheets(www).Activate
+End If
+End Sub
+Sub GO_15()
+www = Cells(15, 12).Value
+www = Replace(www, " ", "")
+If IsNumeric(www) = True Then
+If Worksheets("CODE").Cells(62 + www, 54).Interior.Color = Worksheets("CODE").Cells(61, 48).Interior.Color Then Worksheets(Cells(62 + www, 54).Value).Activate
+Else
+Worksheets(www).Activate
+End If
+End Sub
+Sub GO_16()
+www = Cells(16, 12).Value
+www = Replace(www, " ", "")
+If IsNumeric(www) = True Then
+If Worksheets("CODE").Cells(62 + www, 54).Interior.Color = Worksheets("CODE").Cells(61, 48).Interior.Color Then Worksheets(Cells(62 + www, 54).Value).Activate
+Else
+Worksheets(www).Activate
+End If
+End Sub
+Sub GO_17()
+www = Cells(17, 12).Value
+www = Replace(www, " ", "")
+If IsNumeric(www) = True Then
+If Worksheets("CODE").Cells(62 + www, 54).Interior.Color = Worksheets("CODE").Cells(61, 48).Interior.Color Then Worksheets(Cells(62 + www, 54).Value).Activate
+Else
+Worksheets(www).Activate
+End If
+End Sub
+Sub GO_18()
+www = Cells(18, 12).Value
+www = Replace(www, " ", "")
+If IsNumeric(www) = True Then
+If Worksheets("CODE").Cells(62 + www, 54).Interior.Color = Worksheets("CODE").Cells(61, 48).Interior.Color Then Worksheets(Cells(62 + www, 54).Value).Activate
+Else
+Worksheets(www).Activate
+End If
+End Sub
+
+Sub GO_to_code()
+www = "CODE"
+Worksheets(www).Activate
+End Sub
+Sub Go_back_to()
+www = Worksheets("CODE").Cells(2, 14).Value
+If Len(www) > 1 Then
+Worksheets("CODE").Cells(2, 14).Value = Cells(4, 4).Value
+Worksheets(www).Activate
+End If
+End Sub
+
+Sub Con_F1()
+For j = 1 To 19
+Call TIPsv((j))
+Next j
+
+Load UserForm7
+'If Worksheets(1).Cells(19, 59).Value = 1 Then
+'UserForm7.Label1.Caption = "Выбран вариант связей 3+0! В данном вараинте необходимо разделить участок схемы на последовательные сопротивления, каждое последовательное сопротивление записывается в столбец и может состоять из максимум трех параллельных, записываемых в строки."
+'UserForm7.Image2.Visible = True
+'UserForm7.Image1.Visible = False
+'End If
+
+'If Worksheets(1).Cells(19, 59).Value = 2 Then
+'UserForm7.Label1.Caption = "Выбран вариант связей 2+1! В данном вараинте необходимо разделить участок схемы на последовательные сопротивления для двух первых линий, каждое последовательное сопротивление записывается в столбец и может состоять из максимум двух параллельных, записываемых в строки, кроме того, в третьей строке прописывается отдельная связь источников с последовательными сопротивлениями, параллельная связи, описываемой в первых 2-х столбцах."
+'UserForm7.Image1.Visible = True
+'UserForm7.Image2.Visible = False
+'End If
+Call UserForm7.CommandButton2_Click
+UserForm7.Show
+
+End Sub
+
+
+Function FOL_I(NAME_TO_FIND As String)
+ wf = NAME_TO_FIND
+ 
+
+ ss = 0
+got = 0
+l = "CODE"
+il = 0
+jl = 0
+aa = Worksheets.Count
+For i = 3 To aa
+
+If Worksheets(i).Cells(4, 4).Value = wf Then ss = 1
+
+For j = 5 To 131 Step 7
+If Len(Worksheets(i).Cells(j, 7).Value) > 1 Then
+
+
+If Worksheets(i).Cells(j, 7).Value = wf Then ss = 1
+
+
+
+If ss = 1 Then
+got = i
+i = aa
+j = 131
+End If
+
+End If
+Next j
+Next i
+If got = 0 Then
+'MsgBox ("нет в листах")
+Else
+'Worksheets(l).Activate
+'Worksheets(l).Cells(il, jl).Select
+End If
+ 
+ FOL_I = got
+End Function
+
+ Function FOL_Z(NAME_TO_FIND As String)
+ wf = NAME_TO_FIND
+got = 0
+l = "CODE"
+il = 0
+jl = 0
+aa = Worksheets.Count
+For i = 3 To aa
+For j = 5 To 131 Step 7
+If Len(Worksheets(i).Cells(j, 7).Value) > 1 Then
+
+For j2 = 10 To 28 Step 2
+
+For i2 = 1 To 3
+
+ss = 0
+If InStr(Worksheets(i).Cells(j - 1 + i2, j2).Value, wf) > 1 Then ss = 1
+If Worksheets(i).Cells(j - 1 + i2, j2).Value = wf Then ss = 1
+
+If ss = 1 Then
+got = i
+l = Worksheets(i).Cells(4, 4).Value
+il = j - 1 + i2
+jl = j2
+i = aa
+i2 = 3
+j = 131
+j2 = 28
+End If
+Next i2
+Next j2
+End If
+Next j
+Next i
+If got = 0 Then
+'MsgBox ("нет в листах")
+Else
+'Worksheets(l).Activate
+'Worksheets(l).Cells(il, jl).Select
+End If
+ 
+ FOL_Z = got
+ End Function
+
+
+Sub find_fv1()
+wf = Cells(27, 12).Value
+got = 0
+l = "CODE"
+il = 0
+jl = 0
+aa = Worksheets.Count
+For i = 3 To aa
+For j = 5 To 131 Step 7
+If Len(Worksheets(i).Cells(j, 7).Value) > 1 Then
+
+
+
+
+For j2 = 10 To 28 Step 2
+
+For i2 = 1 To 3
+
+ss = 0
+u09 = Replace(Worksheets(i).Cells(j - 1 + i2, j2).Value, " ", "")
+If InStr(u09, Replace("+" + wf, " ", "")) > 1 Then ss = 1
+If InStr(u09, Replace(wf + "+", " ", "")) > 1 Then ss = 1
+If InStr(u09, Replace("*" + wf, " ", "")) > 1 Then ss = 1
+If InStr(u09, Replace(wf + "*", " ", "")) > 1 Then ss = 1
+
+If u09 = Replace(wf, " ", "") Then ss = 1
+
+If ss = 1 Then
+got = 1
+l = Worksheets(i).Cells(4, 4).Value
+il = j - 1 + i2
+jl = j2
+i = aa
+i2 = 3
+j = 131
+j2 = 28
+End If
+Next i2
+Next j2
+End If
+Next j
+Next i
+If got = 0 Then
+MsgBox ("нет в листах")
+Else
+Worksheets(l).Activate
+Worksheets(l).Cells(il, jl).Select
+End If
+End Sub
+
+Sub P1_P2() ' рассчитать путь
+ufProgress.Show (0)
+progt = 0
+chsv = Worksheets("CODE").Cells(53, 12).Value
+Worksheets("CODE").Cells(53, 12).Value = ""
+'Application.ScreenUpdating = False
+Cells(51, 12).Value = "Найдено путей:"
+Cells(51, 13).Value = Str(0)
+Call GEN_USL_x
+Call numer_is_2
+osh = 0
+
+im1 = Cells(47, 12).Value
+im2 = Cells(48, 12).Value
+
+If IsNumeric(im1) = True Then
+If im1 > 0 Then im1 = Cells(im1 + 62, 54).Value
+End If
+
+If IsNumeric(im2) = True Then
+If im2 > 0 Then im2 = Cells(im2 + 62, 54).Value
+End If
+
+If Len(im1) * Len(im2) = 0 Then osh = 1
+
+' типы стартовых точек
+t1 = 2
+t2 = 2
+i = 62
+Do
+If im1 = Cells(i, 54).Value Then
+If Cells(i, 54).Interior.Color = Cells(62, 48).Interior.Color Then t1 = 1
+End If
+If im2 = Cells(i, 54).Value Then
+If Cells(i, 54).Interior.Color = Cells(62, 48).Interior.Color Then t2 = 1
+End If
+i = i + 1
+Loop While Len(Cells(i, 54).Value) > 1
+
+Dim kod_sv(1000, 20) As Single ' 1...100 звеньев, 1...20 номер связи
+Dim kod_pos(1000, 20) As Single ' 1...100 звеньев, 1...20 номер связи
+Dim way_t(1000) As String ' запись пути
+Dim way_PK(1000) As String ' запись перфокартного пути
+Dim way_ur(1000) As Single ' число уровней в пути
+Dim usl_p(1000, 20) As String
+
+' определяем число источников на первом листе
+cp1 = 0
+For i = 5 To 131 Step 7
+If Len(Worksheets(im1).Cells(i, 7).Value) > 1 Then cp1 = cp1 + 1
+Next i
+
+
+For i = 1 To 1000
+way_t(i) = ""
+way_PK(i) = ""
+way_ur(i) = 0
+For j = 1 To 20
+kod_sv(i, j) = 0
+kod_pos(i, j) = 1
+usl_p(i, j) = ""
+Next j
+
+Next i
+
+list1 = im1
+ch_poi = 0 ' число найденных путей
+ch_z = 1
+
+
+
+urov = 1
+
+
+
+usl_p(urov, 1) = ""
+kod_sv(urov, 1) = Worksheets(list1).Index ' номер листа
+'kod_sv(urov, 2) = Worksheets(list1).Cells(4, 3).Value ' номер источника
+kod_im2 = 0
+ipq = 63
+Do
+If im2 = Worksheets("CODE").Cells(ipq, 54).Value Then kod_im2 = Worksheets("CODE").Cells(ipq, 48).Value
+ipq = ipq + 1
+Loop While Len(Worksheets("CODE").Cells(ipq, 54).Value) > 1
+
+
+
+
+' старт и перебор связей
+stop_i = 0
+Do ' цикл в глубину цепочки по уровням
+
+Do ' цикл по листу по списку источников
+IMA_i = Worksheets(kod_sv(urov, 1)).Cells(kod_pos(urov, 1) * 7 - 2, 7).Value ' имя текущей позиции на листе
+
+If Len(IMA_i) > 1 Then
+
+    ' распознование и запись пути
+    If IMA_i = im2 Then
+    ch_poi = ch_poi + 1
+    For ui = 1 To urov
+    'aa1 = Worksheets(kod_sv(ui, 1)).Cells(4, 3).Value
+    'aa2 = Worksheets(kod_sv(ui, 1)).Cells(kod_pos(ui, 1) * 7 + 2, 16).Value
+    'aa3 = kod_sv(ui, 1)
+    'aa4 = Worksheets(kod_sv(ui, 1)).Name
+    noli = Worksheets(kod_sv(ui, 1)).Cells(4, 3).Value
+    
+    
+    
+    im_si = Worksheets(kod_sv(ui, 1)).Cells(kod_pos(ui, 1) * 7 - 2, 7).Value
+    fgo = 0
+    For jj = 5 To 131 Step 7
+    im_si2 = Worksheets(kod_sv(ui, 1)).Cells(jj, 7).Value
+    If Len(im_si2) > 1 Then
+    fgo = fgo + 1
+    If im_si2 = im_si Then
+    nosi = fgo
+    End If
+    End If
+    Next jj
+    way_PK(ch_poi) = way_PK(ch_poi) + "Uri_" + Str(noli) + "," + Str(nosi) + "; "
+    way_t(ch_poi) = way_t(ch_poi) + Worksheets(kod_sv(ui, 1)).Name + " " + Replace(" (#" + Str(Worksheets(kod_sv(ui, 1)).Cells(4, 3).Value) + ")-->|", " ", "") + "Uri[" + Str(noli) + "," + Str(nosi) + "]=" + Worksheets(kod_sv(ui, 1)).Cells(kod_pos(ui, 1) * 7 + 2, 16).Value + "|-->"
+    Next ui
+    way_t(ch_poi) = way_t(ch_poi) + im2 + " " + Replace(" (#" + Str(kod_im2) + ")", " ", "")
+    way_ur(ch_poi) = urov
+    End If
+    ' распознование и запись пути
+    
+    ''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+    ' определяем нужно ли прибавлять позицию
+    i_poz = 0
+        ' поиск совпадений в кодах связи est = 1
+        est = 0
+        For ui = 1 To urov
+        If ui = urov Then
+        Else
+        'If kod_sv(ui, 1) = Worksheets(ima_i).Index Then est = 1
+        If Worksheets(kod_sv(ui, 1)).Name = IMA_i Then est = 1
+        End If
+        Next ui
+        ' поиск совпадений в кодах связи est = 1
+        If est = 1 Then i_poz = 1
+        
+        ' определение тип источника
+        est_1 = 0
+        If Worksheets(kod_sv(urov, 1)).Cells(kod_pos(urov, 1) * 7 + 1, 7).Value = 1 Then est_1 = 1
+        If est_1 = 1 Then i_poz = 1
+    '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Else
+    i_poz = 1
+End If
+
+If i_poz = 1 Then kod_pos(urov, 1) = kod_pos(urov, 1) + 1 ' наращиваем позицию в случае невозможности провала в источник
+
+If kod_pos(urov, 1) > 19 Then ' сигнал о выборке всех источников на уровне
+ kod_pos(urov, 2) = 0
+ kod_pos(urov, 1) = 1
+ i_poz = 0
+End If
+Loop While i_poz = 1
+
+If urov > Cells(50, 13).Value Then kod_pos(urov, 2) = 0
+
+If kod_pos(urov, 2) = 0 Then
+
+ If urov > 1 Then 'опускаем уровень
+ kod_pos(urov, 2) = 1
+ urov = urov - 1
+ kod_pos(urov, 1) = kod_pos(urov, 1) + 1
+ kod_pos(urov + 1, 1) = 1
+ kod_sv(urov + 1, 1) = 1
+ est_1 = 0
+ Else
+ stop_i = 1
+ End If
+Else
+' всё нормально, идем вглубь
+list1 = Worksheets(kod_sv(urov, 1)).Cells(kod_pos(urov, 1) * 7 - 2, 7).Value
+urov = urov + 1
+kod_sv(urov, 1) = Worksheets(list1).Index
+usl_p(urov, 1) = Worksheets(kod_sv(urov, 1)).Cells(kod_pos(urov, 1) * 7 + 2, 16).Value
+End If
+
+'For i5 = 1 To urov
+'Cells(i5 + 6, 29).Value = Str(kod_pos(i5, 1))
+'Cells(i5 + 6, 30).Value = Worksheets(kod_sv(i5, 1)).Name
+'Next i5
+'For i5 = urov + 1 To 50
+'Cells(i5 + 6, 29).Value = ""
+'Cells(i5 + 6, 30).Value = ""
+'Next i5
+
+'stop_i = 1
+
+bas1 = (kod_pos(1, 1) - 1) * 100 / cp1
+bas0 = (kod_pos(1, 1)) * 100 / cp1
+If urov > 1 Then
+For i5 = 2 To urov
+bas1 = bas1 + (kod_pos(i5, 1) - 1) / (chsv ^ (i5)) * 100
+Next i5
+End If
+
+bas1 = 0.75 * Exp(0.048 * bas1)
+If bas1 > bas0 Then bas1 = bas0
+If progt < bas1 Then progt = bas1
+Call PrPro((progt), "Поиск путей!")
+
+Cells(51, 13).Value = Str(ch_poi)
+Loop While stop_i = 0
+
+Cells(49, 12).Value = ""
+
+' упорядочиваем пути
+For i = 1 To ch_poi
+For j = 1 To ch_poi - 1
+If way_ur(j) > way_ur(j + 1) Then
+t_ur = way_ur(j)
+t_pk = way_PK(j)
+T_T = way_t(j)
+way_ur(j) = way_ur(j + 1)
+way_PK(j) = way_PK(j + 1)
+way_t(j) = way_t(j + 1)
+way_ur(j + 1) = t_ur
+way_PK(j + 1) = t_pk
+way_t(j + 1) = T_T
+End If
+Next j
+Call PrPro((i / ch_poi * 100), "Систематизация путей! Найдено " + Str(ch_poi) + ".")
+Next i
+
+w1 = ""
+w2 = ""
+Cells(6, 40).Value = ""
+For i = 1 To ch_poi
+'Cells(6, 40).Value = Cells(6, 40).Value + way_PK(i) + Chr(13) + Chr(10)
+'Cells(49, 12).Value = Cells(49, 12).Value + Replace("№" + Str(i) + "-ур.{" + Str(way_ur(i) - 1) + "} ", " ", "") + "  " + way_t(i) + Chr(13) + Chr(10)
+w1 = w1 + Str(i) + ":   " + way_PK(i) + Chr(13) + Chr(10)
+w2 = w2 + Replace("№" + Str(i) + "-ур.{" + Str(way_ur(i) - 1) + "} ", " ", "") + "  " + way_t(i) + Chr(13) + Chr(10)
+Call PrPro((i / ch_poi * 100), "Запись форм путей! Найдено " + Str(ch_poi) + ".")
+Next i
+Cells(6, 40).Value = w1
+Cells(49, 12).Value = w2
+Application.ScreenUpdating = True
+Unload ufProgress
+MsgBox ("Done! Found " + Str(ch_poi) + " ways!")
+Cells(6, 32).Value = Replace(Cells(49, 12).Value, "1*", "")
+End Sub
+
+
+Sub find_rep1()
+chzc = 0
+wf = Cells(40, 12).Value
+wn = Cells(41, 12).Value
+sk = 0
+Dim im_rp(2000) As String
+For i = 1 To 2000
+im_rp(i) = ""
+Next i
+got = 0
+l = "CODE"
+il = 0
+jl = 0
+aa = Worksheets.Count
+For i = 3 To aa
+For j = 5 To 131 Step 7
+If Len(Worksheets(i).Cells(j, 7).Value) > 1 Then
+
+For j2 = 10 To 28 Step 2
+
+For i2 = 1 To 3
+
+ss = 0
+'If InStr(Worksheets(i).Cells(j - 1 + i2, j2).Value, wf) > 1 Then ss = 1
+If Worksheets(i).Cells(j - 1 + i2, j2).Value = wf Then ss = 1
+
+If ss = 1 Then
+Worksheets(i).Cells(j - 1 + i2, j2).Value = wn
+
+got = 1
+sk = sk + 1
+im_rp(sk) = Worksheets(i).Cells(4, 4).Value
+
+End If
+Next i2
+Next j2
+End If
+Next j
+Next i
+If got = 0 Then
+MsgBox ("нет в листах")
+Else
+
+Call Replace_R((1), (118), (8), (168), (9), (wf), (wn))
+Call Replace_R((1), (379), (40), (416), (40), (wf), (wn))
+Call Replace_R((1), (7), (93), (24), (93), (wf), (wn))
+Call Replace_R((1), (7), (99), (24), (99), (wf), (wn))
+Call Replace_R((1), (7), (103), (50), (103), (wf), (wn))
+Call Replace_R((1), (7), (107), (50), (107), (wf), (wn))
+Call Replace_R((1), (63), (57), (5050), (57), (wf), (wn))
+Call Replace_R((1), (63), (279), (5050), (279), (wf), (wn))
+
+fo_txt = "("
+For i = 1 To sk
+fo_txt = fo_txt + im_rp(i) + ": "
+Next i
+fo_txt = fo_txt + ") "
+MsgBox ("Проведена замена имен арматур: " + wf + " -->> " + wn + Chr(13) + Chr(10) + "На листах " + fo_txt + Chr(13) + Chr(10) + "Всего замен на листах: " + Str(sk) + Chr(13) + Chr(10) + "Всего замен на CODE: " + Str(chzc))
+
+
+End If
+End Sub
+
+
+
+Sub find_rep_I()
+chzc = 0
+wf = Cells(44, 12).Value
+wn = Cells(45, 12).Value
+sk = 0
+Dim im_rp(2000) As String
+For i = 1 To 2000
+im_rp(i) = ""
+Next i
+got = 0
+l = "CODE"
+il = 0
+jl = 0
+aa = Worksheets.Count
+For i = 3 To aa
+
+If Worksheets(i).Name = wf Then
+Worksheets(i).Name = wn
+Worksheets(i).Cells(4, 4).Value = wn
+sk = sk + 1
+im_rp(sk) = Worksheets(i).Cells(4, 4).Value
+got = 1
+End If
+
+
+For j = 5 To 131 Step 7
+If Len(Worksheets(i).Cells(j, 7).Value) > 1 Then
+
+
+ss = 0
+If Worksheets(i).Cells(j, 7).Value = wf Then ss = 1
+
+If ss = 1 Then
+Worksheets(i).Cells(j, 7).Value = wn
+
+got = 1
+sk = sk + 1
+im_rp(sk) = Worksheets(i).Cells(4, 4).Value
+
+End If
+
+
+End If
+Next j
+Next i
+If got = 0 Then
+MsgBox ("нет в листах")
+Else
+
+Call Replace_R((1), (86), (19), (169), (30), (wf), (wn))
+Call Replace_R((1), (183), (7), (234), (13), (wf), (wn))
+Call Replace_R((1), (60), (30), (533), (46), (wf), (wn))
+Call Replace_R((1), (63), (54), (5050), (54), (wf), (wn))
+Call Replace_R((1), (63), (96), (5050), (96), (wf), (wn))
+Call Replace_R((1), (63), (260), (5050), (260), (wf), (wn))
+Call Replace_R((1), (63), (309), (5050), (309), (wf), (wn))
+Call Replace_R((1), (63), (328), (5050), (328), (wf), (wn))
+Call Replace_R((1), (7), (86), (21), (89), (wf), (wn))
+Call Replace_R((1), (7), (92), (24), (92), (wf), (wn))
+Call Replace_R((1), (7), (98), (24), (98), (wf), (wn))
+Call Replace_R((1), (7), (102), (50), (102), (wf), (wn))
+Call Replace_R((1), (7), (106), (50), (106), (wf), (wn))
+
+
+fo_txt = "("
+For i = 1 To sk
+fo_txt = fo_txt + im_rp(i) + ": "
+Next i
+fo_txt = fo_txt + ") "
+MsgBox ("Проведена замена имен источника: " + wf + " -->> " + wn + Chr(13) + Chr(10) + "На листах " + fo_txt + Chr(13) + Chr(10) + "Всего замен на листах: " + Str(sk) + Chr(13) + Chr(10) + "Всего замен на CODE: " + Str(chzc))
+
+
+End If
+End Sub
+
+
+Sub Replace_R(WorkSheet_nomber As Single, row1 As Single, col1 As Single, row2 As Single, col2 As Single, Find_string As String, New_string As String)
+wsn = WorkSheet_nomber
+wf = Find_string
+wn = New_string
+a01 = row1
+b01 = col1
+a02 = row2
+b02 = col2
+'Worksheets(wsn).Range(Cells(a01, b01), Cells(a02, b02)).Replace what:=wf, Replacement:=wn, _
+ '           LookAt:=xlWhole, SearchOrder:=xlByRows, MatchCase:=False, _
+  '          SearchFormat:=False, ReplaceFormat:=False
+  
+For i = a01 To a02
+For j = b01 To b02
+If InStr(Worksheets(wsn).Cells(i, j).Value, wf) > 0 Then
+
+End If
+If Replace(Worksheets(wsn).Cells(i, j).Value, " ", "") = Replace(wf, " ", "") Then
+chzc = chzc + 1
+Worksheets(wsn).Cells(i, j).Value = wn
+End If
+Next j
+Next i
+  
+  
+
+End Sub
+Sub Replace_I(Find_string As String, New_string As String)
+chzc = 0
+wf = Find_string
+wn = New_string
+Worksheets(Find_string).Cells(4, 4).Value = New_string
+Worksheets(Find_string).Name = New_string
+For i = 3 To Worksheets.Count
+For j = 5 To 131 Step 7
+If Replace(Worksheets(i).Cells(j, 7).Value, " ", "") = Replace(wf, " ", "") Then
+chzc = chzc + 1
+Worksheets(i).Cells(j, 7).Value = wn
+End If
+Next j
+Next i
+Call Replace_R((1), (67), (37), (167), (38), (wf), (wn))
+Call Replace_R((1), (379), (35), (416), (46), (wf), (wn))
+Call Replace_R((1), (86), (19), (169), (30), (wf), (wn))
+Call Replace_R((1), (186), (7), (205), (11), (wf), (wn))
+Call Replace_R((1), (63), (54), (3000), (54), (wf), (wn))
+Call Replace_R((1), (7), (86), (21), (89), (wf), (wn))
+Call Replace_R((1), (19), (7), (24), (7), (wf), (wn))
+Call Replace_R((1), (7), (92), (24), (92), (wf), (wn))
+Call Replace_R((1), (7), (98), (24), (98), (wf), (wn))
+Call Replace_R((1), (7), (102), (50), (102), (wf), (wn))
+Call Replace_R((1), (7), (106), (50), (106), (wf), (wn))
+End Sub
+
+
+Sub test_19()
+wf = "k1"
+wn = "k33"
+a01 = 118
+b01 = 8
+a02 = 168
+b02 = 9
+Worksheets("CODE").Range(Cells(a01, b01), Cells(a02, b02)).Replace what:=wf, Replacement:=wn, _
+            LookAt:=xlWhole, SearchOrder:=xlByRows, MatchCase:=False, _
+            SearchFormat:=False, ReplaceFormat:=False
+End Sub
+
+Sub go_main()
+back_step = ActiveSheet.Name
+back_j = ActiveCell.Column
+back_i = ActiveCell.Row
+Worksheets("CODE").Activate
+If ActiveSheet.Name = "CODE" Then
+Worksheets("CODE").Cells(4, 4).Select
+End If
+End Sub
+
+Sub go_LIB()
+back_step = ActiveSheet.Name
+back_j = ActiveCell.Column
+back_i = ActiveCell.Row
+Worksheets("CODE").Activate
+If ActiveSheet.Name = "CODE" Then
+Worksheets("CODE").Cells(63, 54).Select
+End If
+End Sub
+
+Sub go_LST()
+back_step = ActiveSheet.Name
+back_j = ActiveCell.Column
+back_i = ActiveCell.Row
+INo = ActiveCell.Value
+On Error GoTo 1314:
+Worksheets(INo).Activate
+If ActiveSheet.Name = "CODE" Then
+Worksheets("CODE").Cells(63, 54).Select
+End If
+1314:
+End Sub
+
+Sub go_LIB_I()
+back_step = ActiveSheet.Name
+back_j = ActiveCell.Column
+back_i = ActiveCell.Row
+INo = ActiveCell.Value
+On Error GoTo 1314:
+golib0 (INo)
+
+1314:
+End Sub
+
+Sub go_gener()
+back_step = ActiveSheet.Name
+back_j = ActiveCell.Column
+back_i = ActiveCell.Row
+Worksheets("CODE").Activate
+If ActiveSheet.Name = "CODE" Then
+Worksheets("CODE").Cells(16, 65).Select
+End If
+End Sub
+
+Sub go_fur()
+back_step = ActiveSheet.Name
+back_j = ActiveCell.Column
+back_i = ActiveCell.Row
+Worksheets("CODE").Activate
+If ActiveSheet.Name = "CODE" Then
+Worksheets("CODE").Cells(357, 39).Select
+End If
+End Sub
+
+Sub go_pump()
+back_step = ActiveSheet.Name
+back_j = ActiveCell.Column
+back_i = ActiveCell.Row
+Worksheets("CODE").Activate
+If ActiveSheet.Name = "CODE" Then
+Worksheets("CODE").Cells(85, 16).Select
+End If
+End Sub
+
+Sub go_arm()
+back_step = ActiveSheet.Name
+back_j = ActiveCell.Column
+back_i = ActiveCell.Row
+Worksheets("CODE").Activate
+If ActiveSheet.Name = "CODE" Then
+Worksheets("CODE").Cells(62, 279).Select
+End If
+End Sub
+
+Sub go_24_comp()
+back_step = ActiveSheet.Name
+back_j = ActiveCell.Column
+back_i = ActiveCell.Row
+Worksheets("CODE").Activate
+If ActiveSheet.Name = "CODE" Then
+Worksheets("CODE").Cells(62, 328).Select
+End If
+End Sub
+
+Sub go_oi_ppk()
+back_step = ActiveSheet.Name
+back_j = ActiveCell.Column
+back_i = ActiveCell.Row
+Worksheets("CODE").Activate
+If ActiveSheet.Name = "CODE" Then
+Worksheets("CODE").Cells(5, 91).Select
+End If
+End Sub
+
+Sub go_ssbl()
+back_step = ActiveSheet.Name
+back_j = ActiveCell.Column
+back_i = ActiveCell.Row
+Worksheets("CODE").Activate
+If ActiveSheet.Name = "CODE" Then
+Worksheets("CODE").Cells(44, 263).Select
+End If
+End Sub
+
+
+Sub go_back()
+If back_i > 0 Then
+Else
+back_i = 1
+End If
+If back_j > 0 Then
+Else
+back_j = 1
+End If
+
+
+back_step_0 = ActiveSheet.Name
+back_j_0 = ActiveCell.Column
+back_i_0 = ActiveCell.Row
+If back_step = "" Then back_step = "CODE"
+Worksheets(back_step).Activate
+Cells(back_i, back_j).Select
+back_step = back_step_0
+back_j = back_j_0
+back_i = back_i_0
+End Sub
+
+Sub find_fv2()
+wf = Cells(28, 12).Value
+got = 0
+l = "CODE"
+il = 0
+jl = 0
+aa = Worksheets.Count
+For i = 3 To aa
+If i = 6 Then
+a = a
+End If
+For j = 5 To 131 Step 7
+If Len(Worksheets(i).Cells(j, 7).Value) > 1 Then
+
+If i = 6 Then
+a = a
+End If
+
+For j2 = 10 To 28 Step 2
+
+For i2 = 1 To 3
+adddd = Worksheets(i).Cells(j - 1 + i2, j2).Value
+ss = 0
+
+
+If InStr(Replace(Worksheets(i).Cells(j - 1 + i2, j2).Value, " ", ""), Replace("+" + wf, " ", "")) > 1 Then ss = 1
+If InStr(Replace(Worksheets(i).Cells(j - 1 + i2, j2).Value, " ", ""), Replace(wf + "+", " ", "")) > 1 Then ss = 1
+If InStr(Replace(Worksheets(i).Cells(j - 1 + i2, j2).Value, " ", ""), Replace("*" + wf, " ", "")) > 1 Then ss = 1
+If InStr(Replace(Worksheets(i).Cells(j - 1 + i2, j2).Value, " ", ""), Replace(wf + "*", " ", "")) > 1 Then ss = 1
+If Replace(Worksheets(i).Cells(j - 1 + i2, j2).Value, " ", "") = Replace(wf, " ", "") Then ss = 1
+
+If ss = 1 Then
+got = 1
+l = Worksheets(i).Cells(4, 4).Value
+il = j - 1 + i2
+jl = j2
+i = aa
+i2 = 3
+j = 131
+j2 = 28
+End If
+Next i2
+
+Next j2
+End If
+Next j
+Next i
+If got = 0 Then
+MsgBox ("нет в листах")
+Else
+Worksheets(l).Activate
+Worksheets(l).Cells(il, jl).Select
+End If
+End Sub
+
+Sub find_istTIP()
+wf = Cells(56, 12).Value
+nl = 2
+tip_n = Cells(57, 12).Value
+i2 = 1
+j2 = 7
+got = 0
+l = "CODE"
+il = 0
+jl = 0
+aa = Worksheets.Count
+For i = nl To aa
+For j = 5 To 131 Step 7
+If Len(Worksheets(i).Cells(j, 7).Value) > 1 Then
+
+
+
+'For j2 = 10 To 28 Step 2
+
+'For i2 = 1 To 3
+adddd = Worksheets(i).Cells(j, 7).Value
+ss = 0
+
+If InStr(Replace(Worksheets(i).Cells(j - 1 + i2, j2).Value, " ", ""), Replace("+" + wf, " ", "")) > 1 Then ss = 1
+If InStr(Replace(Worksheets(i).Cells(j - 1 + i2, j2).Value, " ", ""), Replace(wf + "+", " ", "")) > 1 Then ss = 1
+If InStr(Replace(Worksheets(i).Cells(j - 1 + i2, j2).Value, " ", ""), Replace("*" + wf, " ", "")) > 1 Then ss = 1
+If InStr(Replace(Worksheets(i).Cells(j - 1 + i2, j2).Value, " ", ""), Replace(wf + "*", " ", "")) > 1 Then ss = 1
+If Replace(Worksheets(i).Cells(j - 1 + i2, j2).Value, " ", "") = Replace(wf, " ", "") Then ss = 1
+
+
+If ss = 1 Then
+got = 1
+l = Worksheets(i).Cells(4, 4).Value
+Worksheets(i).Cells(j + 3, 7).Value = tip_n
+il = j
+jl = 7
+'i = aa
+'j = 131
+End If
+'Next i2
+'Next j2
+End If
+Next j
+Next i
+If got = 0 Then
+MsgBox ("нет в листах")
+Else
+'Worksheets(l).Activate
+'Worksheets(l).Cells(il, jl).Select
+End If
+MsgBox ("ВЫПОЛНЕНО!")
+End Sub
+
+
+Sub find_ist1()
+wf = Cells(32, 12).Value
+nl = Cells(33, 12).Value + 2
+i2 = 1
+j2 = 7
+got = 0
+l = "CODE"
+il = 0
+jl = 0
+aa = Worksheets.Count
+For i = nl To aa
+For j = 5 To 131 Step 7
+If Len(Worksheets(i).Cells(j, 7).Value) > 1 Then
+
+
+
+'For j2 = 10 To 28 Step 2
+
+'For i2 = 1 To 3
+adddd = Worksheets(i).Cells(j, 7).Value
+ss = 0
+
+If InStr(Replace(Worksheets(i).Cells(j - 1 + i2, j2).Value, " ", ""), Replace("+" + wf, " ", "")) > 1 Then ss = 1
+If InStr(Replace(Worksheets(i).Cells(j - 1 + i2, j2).Value, " ", ""), Replace(wf + "+", " ", "")) > 1 Then ss = 1
+If InStr(Replace(Worksheets(i).Cells(j - 1 + i2, j2).Value, " ", ""), Replace("*" + wf, " ", "")) > 1 Then ss = 1
+If InStr(Replace(Worksheets(i).Cells(j - 1 + i2, j2).Value, " ", ""), Replace(wf + "*", " ", "")) > 1 Then ss = 1
+If Replace(Worksheets(i).Cells(j - 1 + i2, j2).Value, " ", "") = Replace(wf, " ", "") Then ss = 1
+
+
+If ss = 1 Then
+got = 1
+l = Worksheets(i).Cells(4, 4).Value
+il = j
+jl = 7
+i = aa
+j = 131
+End If
+'Next i2
+'Next j2
+End If
+Next j
+Next i
+If got = 0 Then
+MsgBox ("нет в листах")
+Else
+Worksheets(l).Activate
+Worksheets(l).Cells(il, jl).Select
+End If
+End Sub
+
+
+Sub find_ist2()
+wf = Cells(34, 12).Value
+nl = Cells(35, 12).Value + 2
+i2 = 1
+j2 = 7
+got = 0
+l = "CODE"
+il = 0
+jl = 0
+aa = Worksheets.Count
+For i = nl To aa
+For j = 5 To 131 Step 7
+If Len(Worksheets(i).Cells(j, 7).Value) > 1 Then
+
+
+
+'For j2 = 10 To 28 Step 2
+
+'For i2 = 1 To 3
+adddd = Worksheets(i).Cells(j, 7).Value
+ss = 0
+'If InStr(Worksheets(i).Cells(j, 7).Value, wf) > 1 Then ss = 1
+If Replace(Worksheets(i).Cells(j, 7).Value, " ", "") = Replace(wf, " ", "") Then ss = 1
+
+If ss = 1 Then
+got = 1
+l = Worksheets(i).Cells(4, 4).Value
+il = j
+jl = 7
+i = aa
+j = 131
+End If
+'Next i2
+'Next j2
+End If
+Next j
+Next i
+If got = 0 Then
+MsgBox ("нет в листах")
+Else
+Worksheets(l).Activate
+Worksheets(l).Cells(il, jl).Select
+End If
+End Sub
+Sub del_i(nomb As Double)
+Worksheets("CODE").Cells(12, 166).Value = 0 ' индикатор требования сбора библиотеки
+i = nomb
+Cells(7 * i - 2, 7).Value = ""
+Cells(7 * i + 1, 7).Value = 2
+Cells(7 * i + 2, 7).Value = 0
+Cells(7 * i + 3, 7).Value = ""
+Cells(7 * i + 4, 7).Value = ""
+Cells(7 * i - 3, 6).Value = ""
+Cells(7 * i + 4, 5).Value = 1
+Range(Cells(7 * i - 2, 9), Cells(7 * i, 28)).ClearContents
+Cells(7 * i + 1, 10).Value = ""
+Cells(7 * i + 1, 11).Value = ""
+Cells(7 * i + 1, 12).Value = ""
+Cells(7 * i + 1, 13).Value = ""
+Cells(7 * i + 1, 14).Value = ""
+Cells(7 * i + 2, 16).Value = ""
+Cells(7 * i + 2, 17).Value = ""
+Cells(7 * i + 2, 20).Value = ""
+Cells(7 * i + 2, 21).Value = ""
+Cells(7 * i + 2, 22).Value = ""
+Cells(7 * i + 1, 20).Value = ""
+End Sub
+
+Sub insert_in()
+Worksheets("CODE").Cells(12, 166).Value = 0 ' индикатор требования сбора библиотеки
+im1 = Cells(4, 4).Value
+d01 = InputBox("Введите номер источника для интеграции!", "Интеграция <в разрез> источника!", "1")
+If Len(d01) = 0 Then Exit Sub
+d02 = InputBox("Выберите позицию текущих арматур:" + Chr(13) + Chr(10) + "1 - остаются со стороны " + Cells(4, 4).Value + Chr(13) + Chr(10) + "2 - остаются со стороны " + Cells(d01 * 7 - 2, 7).Value, "Позиция текущих арматур!", "1")
+If Len(d02) = 0 Then Exit Sub
+d03 = InputBox("Укажите имя нового источника!", "Интеграция <в разрез> источника!", Cells(d01 * 7 - 2, 7).Value + "_" + Cells(4, 4).Value)
+If Len(d03) = 0 Then Exit Sub
+Worksheets("EX").Copy After:=Worksheets(im1)
+as_0 = Worksheets(im1).Index
+Nli = as_0 + 1
+Worksheets(Nli).Name = d03
+Worksheets(Nli).Cells(4, 4).Value = d03
+im1 = Worksheets(as_0).Cells(4, 4).Value
+im2 = Worksheets(as_0).Cells(d01 * 7 - 2, 7).Value
+Worksheets(Nli).Cells(5, 7).Value = im1
+Worksheets(Nli).Cells(8, 10).Value = Worksheets(im1).Cells(5 + (d01 - 1) * 7 + 3, 10).Value
+Worksheets(Nli).Cells(8, 11).Value = Worksheets(im1).Cells(5 + (d01 - 1) * 7 + 3, 11).Value
+Worksheets(Nli).Cells(8, 12).Value = Worksheets(im1).Cells(5 + (d01 - 1) * 7 + 3, 12).Value
+Worksheets(Nli).Cells(8, 13).Value = Worksheets(im1).Cells(5 + (d01 - 1) * 7 + 3, 13).Value
+Worksheets(Nli).Cells(10, 7).Value = Worksheets(im1).Cells(5 + (d01 - 1) * 7 + 3, 7).Value
+Worksheets(Nli).Cells(11, 7).Value = Worksheets(im1).Cells(5 + (d01 - 1) * 7 + 4, 7).Value
+
+Worksheets(Nli).Cells(12, 7).Value = im2
+Worksheets(Nli).Cells(15, 10).Value = Worksheets(im1).Cells(5 + (d01 - 1) * 7 + 3, 10).Value
+Worksheets(Nli).Cells(15, 11).Value = Worksheets(im1).Cells(5 + (d01 - 1) * 7 + 3, 11).Value
+Worksheets(Nli).Cells(15, 12).Value = Worksheets(im1).Cells(5 + (d01 - 1) * 7 + 3, 12).Value
+Worksheets(Nli).Cells(15, 13).Value = Worksheets(im1).Cells(5 + (d01 - 1) * 7 + 3, 13).Value
+Worksheets(Nli).Cells(17, 7).Value = Worksheets(im1).Cells(5 + (d01 - 1) * 7 + 3, 7).Value
+Worksheets(Nli).Cells(18, 7).Value = Worksheets(im1).Cells(5 + (d01 - 1) * 7 + 4, 7).Value
+
+Worksheets(im1).Cells(d01 * 7 - 2, 7).Value = d03
+j0 = 0
+For j = 5 To 131 Step 7
+If Worksheets(im2).Cells(j, 7).Value = im1 Then j0 = j
+Next j
+Worksheets(im2).Cells(j0, 7).Value = d03
+
+
+If d02 = 1 Then
+For j = 9 To 28
+Worksheets(Nli).Cells(5, j).Value = Worksheets(im1).Cells(d01 * 7 - 2, j).Value
+Worksheets(Nli).Cells(6, j).Value = Worksheets(im1).Cells(d01 * 7 - 1, j).Value
+Worksheets(Nli).Cells(7, j).Value = Worksheets(im1).Cells(d01 * 7 - 0, j).Value
+Worksheets(im2).Cells(j0, j).Value = ""
+Worksheets(im2).Cells(j0 + 1, j).Value = ""
+Worksheets(im2).Cells(j0 + 2, j).Value = ""
+Next j
+
+Else
+For j = 9 To 28
+Worksheets(Nli).Cells(12, j).Value = Worksheets(im1).Cells(d01 * 7 - 2, j).Value
+Worksheets(Nli).Cells(13, j).Value = Worksheets(im1).Cells(d01 * 7 - 1, j).Value
+Worksheets(Nli).Cells(14, j).Value = Worksheets(im1).Cells(d01 * 7 - 0, j).Value
+Worksheets(im1).Cells(d01 * 7 - 2, j).Value = ""
+Worksheets(im1).Cells(d01 * 7 - 1, j).Value = ""
+Worksheets(im1).Cells(d01 * 7, j).Value = ""
+Next j
+
+
+End If
+
+
+End Sub
+
+Sub MOVE_line(direction_UP_DOWN As String, Nomber_Line As Single)
+Application.ScreenUpdating = False
+Dim GL(10) As Variant
+Dim LZ(5, 20) As Variant
+Worksheets("CODE").Cells(12, 166).Value = 0
+
+If direction_UP_DOWN = "UP" Then w = 1
+If direction_UP_DOWN = "Up" Then w = 1
+If direction_UP_DOWN = "up" Then w = 1
+If direction_UP_DOWN = "DOWN" Then w = 0
+If direction_UP_DOWN = "Down" Then w = 0
+If direction_UP_DOWN = "down" Then w = 0
+n = Nomber_Line
+osh = 0
+If n = 1 Then
+If w = 1 Then osh = 1
+End If
+If n = 19 Then
+If w = 0 Then osh = 1
+End If
+
+If osh = 1 Then
+MsgBox ("Действие невозможно")
+Else
+' допустимо перемещение
+
+' записываем в память текущую строку
+GL(1) = Cells(7 * n - 2, 7).Value ' имя
+GL(2) = Cells(7 * n + 1, 7).Value ' тип источника
+GL(3) = Cells(7 * n + 2, 7).Value ' г.с.
+GL(4) = Cells(7 * n + 3, 7).Value ' GLW
+GL(5) = Cells(7 * n + 4, 7).Value ' % воды
+GL(6) = Cells(7 * n - 3, 6).Value ' обратные GLW
+GL(7) = Cells(7 * n + 4, 5).Value ' тип связи
+GL(8) = Cells(7 * n + 2, 5).Value ' высота штуцера
+
+For i = 1 To 5
+For j = 1 To 20
+LZ(i, j) = Cells(7 * n - 3 + i, j + 8).Value
+Next j
+Next i
+
+
+'перемещаем с необходимой в текущую
+neo = n + 1
+If w = 1 Then neo = n - 1
+Cells(7 * n - 2, 7).Value = Cells(7 * neo - 2, 7).Value
+Cells(7 * n + 1, 7).Value = Cells(7 * neo + 1, 7).Value
+Cells(7 * n + 2, 7).Value = Cells(7 * neo + 2, 7).Value
+Cells(7 * n + 3, 7).Value = Cells(7 * neo + 3, 7).Value
+Cells(7 * n + 4, 7).Value = Cells(7 * neo + 4, 7).Value
+Cells(7 * n - 3, 6).Value = Cells(7 * neo - 3, 6).Value
+Cells(7 * n + 4, 5).Value = Cells(7 * neo + 4, 5).Value
+Cells(7 * n + 2, 5).Value = Cells(7 * neo + 2, 5).Value
+For i = 1 To 5
+For j = 1 To 20
+Cells(7 * n - 3 + i, j + 8).Value = Cells(7 * neo - 3 + i, j + 8).Value
+Next j
+Next i
+
+
+'перемещаем с памяти в необходимую
+Cells(7 * neo - 2, 7).Value = GL(1)
+Cells(7 * neo + 1, 7).Value = GL(2)
+Cells(7 * neo + 2, 7).Value = GL(3)
+Cells(7 * neo + 3, 7).Value = GL(4)
+Cells(7 * neo + 4, 7).Value = GL(5)
+Cells(7 * neo - 3, 6).Value = GL(6)
+Cells(7 * neo + 4, 5).Value = GL(7)
+Cells(7 * neo + 2, 5).Value = GL(8)
+For i = 1 To 5
+For j = 1 To 20
+Cells(7 * neo - 3 + i, j + 8).Value = LZ(i, j)
+Next j
+Next i
+
+End If
+
+If allch = 1 Then
+Else
+Application.ScreenUpdating = True
+End If
+End Sub
+
+Sub All_up()
+Application.ScreenUpdating = False
+allch = 1
+For i = 1 To 19
+    If Len(Cells(i * 7 + 5 - 7, 7).Value) < 1 Then ' нашли пустую строку
+    
+    i01 = i
+    Do
+    i01 = i01 + 1
+    If i01 > 20 Then Exit Sub
+    Loop While Len(Cells(i01 * 7 + 5 - 7, 7).Value) < 1
+    Y = i01
+    For ik = 1 To i01 - i
+    Call MOVE_line("UP", (Y))
+    'Application.ScreenUpdating = False
+    Y = Y - 1
+    Next ik
+    End If
+Next i
+allch = 0
+Application.ScreenUpdating = True
+End Sub
+
+Sub All_down()
+Application.ScreenUpdating = False
+allch = 1
+For i = 19 To 1 Step -1
+    If Len(Cells(i * 7 + 5 - 7, 7).Value) < 1 Then ' нашли пустую строку
+    
+    i01 = i
+    Do
+    i01 = i01 - 1
+    If i01 < 1 Then Exit Sub
+    Loop While Len(Cells(i01 * 7 + 5 - 7, 7).Value) < 1
+    Y = i01
+    For ik = 1 To i - i01
+    Call MOVE_line("DOWN", (Y))
+    'Application.ScreenUpdating = False
+    Y = Y + 1
+    Next ik
+    End If
+Next i
+allch = 0
+Application.ScreenUpdating = True
+End Sub
+
+Sub move_1_up()
+ind_n = 1
+Call MOVE_line("UP", (ind_n))
+End Sub
+Sub move_2_up()
+ind_n = 2
+Call MOVE_line("UP", (ind_n))
+End Sub
+Sub move_3_up()
+ind_n = 3
+Call MOVE_line("UP", (ind_n))
+End Sub
+Sub move_4_up()
+ind_n = 4
+Call MOVE_line("UP", (ind_n))
+End Sub
+Sub move_5_up()
+ind_n = 5
+Call MOVE_line("UP", (ind_n))
+End Sub
+Sub move_6_up()
+ind_n = 6
+Call MOVE_line("UP", (ind_n))
+End Sub
+Sub move_7_up()
+ind_n = 7
+Call MOVE_line("UP", (ind_n))
+End Sub
+Sub move_8_up()
+ind_n = 8
+Call MOVE_line("UP", (ind_n))
+End Sub
+Sub move_9_up()
+ind_n = 9
+Call MOVE_line("UP", (ind_n))
+End Sub
+Sub move_10_up()
+ind_n = 10
+Call MOVE_line("UP", (ind_n))
+End Sub
+Sub move_11_up()
+ind_n = 11
+Call MOVE_line("UP", (ind_n))
+End Sub
+Sub move_12_up()
+ind_n = 12
+Call MOVE_line("UP", (ind_n))
+End Sub
+Sub move_13_up()
+ind_n = 13
+Call MOVE_line("UP", (ind_n))
+End Sub
+Sub move_14_up()
+ind_n = 14
+Call MOVE_line("UP", (ind_n))
+End Sub
+Sub move_15_up()
+ind_n = 15
+Call MOVE_line("UP", (ind_n))
+End Sub
+Sub move_16_up()
+ind_n = 16
+Call MOVE_line("UP", (ind_n))
+End Sub
+Sub move_17_up()
+ind_n = 17
+Call MOVE_line("UP", (ind_n))
+End Sub
+Sub move_18_up()
+ind_n = 18
+Call MOVE_line("UP", (ind_n))
+End Sub
+Sub move_19_up()
+ind_n = 19
+Call MOVE_line("UP", (ind_n))
+End Sub
+Sub move_1_dowm()
+ind_n = 1
+Call MOVE_line("DOWN", (ind_n))
+End Sub
+Sub move_2_dowm()
+ind_n = 2
+Call MOVE_line("DOWN", (ind_n))
+End Sub
+Sub move_3_dowm()
+ind_n = 3
+Call MOVE_line("DOWN", (ind_n))
+End Sub
+Sub move_4_dowm()
+ind_n = 4
+Call MOVE_line("DOWN", (ind_n))
+End Sub
+Sub move_5_dowm()
+ind_n = 5
+Call MOVE_line("DOWN", (ind_n))
+End Sub
+Sub move_6_dowm()
+ind_n = 6
+Call MOVE_line("DOWN", (ind_n))
+End Sub
+Sub move_7_dowm()
+ind_n = 7
+Call MOVE_line("DOWN", (ind_n))
+End Sub
+Sub move_8_dowm()
+ind_n = 8
+Call MOVE_line("DOWN", (ind_n))
+End Sub
+Sub move_9_dowm()
+ind_n = 9
+Call MOVE_line("DOWN", (ind_n))
+End Sub
+Sub move_10_dowm()
+ind_n = 10
+Call MOVE_line("DOWN", (ind_n))
+End Sub
+Sub move_11_dowm()
+ind_n = 11
+Call MOVE_line("DOWN", (ind_n))
+End Sub
+Sub move_12_dowm()
+ind_n = 12
+Call MOVE_line("DOWN", (ind_n))
+End Sub
+Sub move_13_dowm()
+ind_n = 13
+Call MOVE_line("DOWN", (ind_n))
+End Sub
+Sub move_14_dowm()
+ind_n = 14
+Call MOVE_line("DOWN", (ind_n))
+End Sub
+Sub move_15_dowm()
+ind_n = 15
+Call MOVE_line("DOWN", (ind_n))
+End Sub
+Sub move_16_dowm()
+ind_n = 16
+Call MOVE_line("DOWN", (ind_n))
+End Sub
+Sub move_17_dowm()
+ind_n = 17
+Call MOVE_line("DOWN", (ind_n))
+End Sub
+Sub move_18_dowm()
+ind_n = 18
+Call MOVE_line("DOWN", (ind_n))
+End Sub
+Sub move_19_dowm()
+ind_n = 19
+Call MOVE_line("DOWN", (ind_n))
+End Sub
+Sub del_str_1()
+i = 1
+Call del_i((i))
+End Sub
+Sub del_str_2()
+i = 2
+Call del_i((i))
+End Sub
+Sub del_str_3()
+i = 3
+Call del_i((i))
+End Sub
+Sub del_str_4()
+i = 4
+Call del_i((i))
+End Sub
+Sub del_str_5()
+i = 5
+Call del_i((i))
+End Sub
+Sub del_str_6()
+i = 6
+Call del_i((i))
+End Sub
+Sub del_str_7()
+i = 7
+Call del_i((i))
+End Sub
+Sub del_str_8()
+i = 8
+Call del_i((i))
+End Sub
+Sub del_str_9()
+i = 9
+Call del_i((i))
+End Sub
+Sub del_str_10()
+i = 10
+Call del_i((i))
+End Sub
+Sub del_str_11()
+i = 11
+Call del_i((i))
+End Sub
+Sub del_str_12()
+i = 12
+Call del_i((i))
+End Sub
+Sub del_str_13()
+i = 13
+Call del_i((i))
+End Sub
+Sub del_str_14()
+i = 14
+Call del_i((i))
+End Sub
+Sub del_str_15()
+i = 15
+Call del_i((i))
+End Sub
+Sub del_str_16()
+i = 16
+Call del_i((i))
+End Sub
+Sub del_str_17()
+i = 17
+Call del_i((i))
+End Sub
+Sub del_str_18()
+i = 18
+Call del_i((i))
+End Sub
+Sub del_str_19()
+i = 19
+Call del_i((i))
+End Sub
+
+Sub PPU0(nom As Single)
+i = nom
+Dim I_ppu(15) As String
+Dim D_ppu(15, 3) As Single
+
+For i = 1 To 15
+I_ppu(i) = ""
+For j = 1 To 3
+D_ppu(i, j) = 0
+Next j
+Next i
+
+ch = 0
+For i = 220 To 233
+ai = Worksheets("CODE").Cells(i, 7).Value
+a1 = Worksheets("CODE").Cells(i, 8).Value
+a2 = Worksheets("CODE").Cells(i, 9).Value
+a3 = Worksheets("CODE").Cells(i, 10).Value
+
+If Len(ai) * Len(a1) * Len(a2) * Len(a3) > 0 Then
+ch = ch + 1
+I_ppu(ch) = ai
+D_ppu(ch, 1) = a1
+D_ppu(ch, 2) = a2
+D_ppu(ch, 3) = a3
+End If
+Next i
+
+For i = 1 To ch
+UserForm12.ListBox1.AddItem I_ppu(i)
+Next i
+UserForm12.TextBox2.Text = Str(nom)
+Load UserForm12
+UserForm12.Show
+
+
+
+End Sub
+
+Sub PPU_1()
+i = 1
+Call PPU0((i))
+End Sub
+Sub PPU_2()
+i = 2
+Call PPU0((i))
+End Sub
+Sub PPU_3()
+i = 3
+Call PPU0((i))
+End Sub
+Sub PPU_4()
+i = 4
+Call PPU0((i))
+End Sub
+Sub PPU_5()
+i = 5
+Call PPU0((i))
+End Sub
+Sub PPU_6()
+i = 6
+Call PPU0((i))
+End Sub
+Sub PPU_7()
+i = 7
+Call PPU0((i))
+End Sub
+Sub PPU_8()
+i = 8
+Call PPU0((i))
+End Sub
+Sub PPU_9()
+i = 9
+Call PPU0((i))
+End Sub
+Sub PPU_10()
+i = 10
+Call PPU0((i))
+End Sub
+Sub PPU_11()
+i = 11
+Call PPU0((i))
+End Sub
+Sub PPU_12()
+i = 12
+Call PPU0((i))
+End Sub
+Sub PPU_13()
+i = 13
+Call PPU0((i))
+End Sub
+Sub PPU_14()
+i = 14
+Call PPU0((i))
+End Sub
+Sub PPU_15()
+i = 15
+Call PPU0((i))
+End Sub
+Sub PPU_16()
+i = 16
+Call PPU0((i))
+End Sub
+Sub PPU_17()
+i = 17
+Call PPU0((i))
+End Sub
+Sub PPU_18()
+i = 18
+Call PPU0((i))
+End Sub
+Sub PPU_19()
+i = 19
+Call PPU0((i))
+End Sub
+
+Sub GO_to_1()
+Worksheets("CODE").Cells(2, 14).Value = Cells(4, 4).Value
+a = 5 + 7 * (1 - 1)
+www = Cells(a, 7).Value
+If Cells(a + 3, 7).Value = 1 Then www = ""
+If Len(www) > 1 Then
+Worksheets(www).Activate
+End If
+End Sub
+
+Sub GO_to_2()
+Worksheets("CODE").Cells(2, 14).Value = Cells(4, 4).Value
+a = 5 + 7 * (2 - 1)
+www = Cells(a, 7).Value
+If Cells(a + 3, 7).Value = 1 Then www = ""
+If Len(www) > 1 Then
+Worksheets(www).Activate
+End If
+End Sub
+
+Sub GO_to_3()
+Worksheets("CODE").Cells(2, 14).Value = Cells(4, 4).Value
+a = 5 + 7 * (3 - 1)
+www = Cells(a, 7).Value
+If Cells(a + 3, 7).Value = 1 Then www = ""
+If Len(www) > 1 Then
+Worksheets(www).Activate
+End If
+End Sub
+
+Sub GO_to_4()
+Worksheets("CODE").Cells(2, 14).Value = Cells(4, 4).Value
+a = 5 + 7 * (4 - 1)
+www = Cells(a, 7).Value
+If Cells(a + 3, 7).Value = 1 Then www = ""
+If Len(www) > 1 Then
+Worksheets(www).Activate
+End If
+End Sub
+
+Sub GO_to_5()
+Worksheets("CODE").Cells(2, 14).Value = Cells(4, 4).Value
+a = 5 + 7 * (5 - 1)
+www = Cells(a, 7).Value
+If Cells(a + 3, 7).Value = 1 Then www = ""
+If Len(www) > 1 Then
+Worksheets(www).Activate
+End If
+End Sub
+
+Sub GO_to_6()
+Worksheets("CODE").Cells(2, 14).Value = Cells(4, 4).Value
+a = 5 + 7 * (6 - 1)
+www = Cells(a, 7).Value
+If Cells(a + 3, 7).Value = 1 Then www = ""
+If Len(www) > 1 Then
+Worksheets(www).Activate
+End If
+End Sub
+
+Sub GO_to_7()
+Worksheets("CODE").Cells(2, 14).Value = Cells(4, 4).Value
+a = 5 + 7 * (7 - 1)
+www = Cells(a, 7).Value
+If Cells(a + 3, 7).Value = 1 Then www = ""
+If Len(www) > 1 Then
+Worksheets(www).Activate
+End If
+End Sub
+
+Sub GO_to_8()
+Worksheets("CODE").Cells(2, 14).Value = Cells(4, 4).Value
+a = 5 + 7 * (8 - 1)
+www = Cells(a, 7).Value
+If Cells(a + 3, 7).Value = 1 Then www = ""
+If Len(www) > 1 Then
+Worksheets(www).Activate
+End If
+End Sub
+
+Sub GO_to_9()
+Worksheets("CODE").Cells(2, 14).Value = Cells(4, 4).Value
+a = 5 + 7 * (9 - 1)
+www = Cells(a, 7).Value
+If Cells(a + 3, 7).Value = 1 Then www = ""
+If Len(www) > 1 Then
+Worksheets(www).Activate
+End If
+End Sub
+
+Sub GO_to_10()
+Worksheets("CODE").Cells(2, 14).Value = Cells(4, 4).Value
+a = 5 + 7 * (10 - 1)
+www = Cells(a, 7).Value
+If Cells(a + 3, 7).Value = 1 Then www = ""
+If Len(www) > 1 Then
+Worksheets(www).Activate
+End If
+End Sub
+
+Sub GO_to_11()
+Worksheets("CODE").Cells(2, 14).Value = Cells(4, 4).Value
+a = 5 + 7 * (11 - 1)
+www = Cells(a, 7).Value
+If Cells(a + 3, 7).Value = 1 Then www = ""
+If Len(www) > 1 Then
+Worksheets(www).Activate
+End If
+End Sub
+
+Sub GO_to_12()
+Worksheets("CODE").Cells(2, 14).Value = Cells(4, 4).Value
+a = 5 + 7 * (12 - 1)
+www = Cells(a, 7).Value
+If Cells(a + 3, 7).Value = 1 Then www = ""
+If Len(www) > 1 Then
+Worksheets(www).Activate
+End If
+End Sub
+
+Sub GO_to_13()
+Worksheets("CODE").Cells(2, 14).Value = Cells(4, 4).Value
+a = 5 + 7 * (13 - 1)
+www = Cells(a, 7).Value
+If Cells(a + 3, 7).Value = 1 Then www = ""
+If Len(www) > 1 Then
+Worksheets(www).Activate
+End If
+End Sub
+
+Sub GO_to_14()
+Worksheets("CODE").Cells(2, 14).Value = Cells(4, 4).Value
+a = 5 + 7 * (14 - 1)
+www = Cells(a, 7).Value
+If Cells(a + 3, 7).Value = 1 Then www = ""
+If Len(www) > 1 Then
+Worksheets(www).Activate
+End If
+End Sub
+
+Sub GO_to_15()
+Worksheets("CODE").Cells(2, 14).Value = Cells(4, 4).Value
+a = 5 + 7 * (15 - 1)
+www = Cells(a, 7).Value
+If Cells(a + 3, 7).Value = 1 Then www = ""
+If Len(www) > 1 Then
+Worksheets(www).Activate
+End If
+End Sub
+
+Sub GO_to_16()
+Worksheets("CODE").Cells(2, 14).Value = Cells(4, 4).Value
+a = 5 + 7 * (16 - 1)
+www = Cells(a, 7).Value
+If Cells(a + 3, 7).Value = 1 Then www = ""
+If Len(www) > 1 Then
+Worksheets(www).Activate
+End If
+End Sub
+
+Sub GO_to_17()
+Worksheets("CODE").Cells(2, 14).Value = Cells(4, 4).Value
+a = 5 + 7 * (17 - 1)
+www = Cells(a, 7).Value
+If Cells(a + 3, 7).Value = 1 Then www = ""
+If Len(www) > 1 Then
+Worksheets(www).Activate
+End If
+End Sub
+
+Sub GO_to_18()
+Worksheets("CODE").Cells(2, 14).Value = Cells(4, 4).Value
+a = 5 + 7 * (18 - 1)
+www = Cells(a, 7).Value
+If Cells(a + 3, 7).Value = 1 Then www = ""
+If Len(www) > 1 Then
+Worksheets(www).Activate
+End If
+End Sub
+
+Sub GO_to_19()
+Worksheets("CODE").Cells(2, 14).Value = Cells(4, 4).Value
+a = 5 + 7 * (19 - 1)
+www = Cells(a, 7).Value
+If Cells(a + 3, 7).Value = 1 Then www = ""
+If Len(www) > 1 Then
+Worksheets(www).Activate
+End If
+End Sub
+

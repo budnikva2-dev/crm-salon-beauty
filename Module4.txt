@@ -1,0 +1,251 @@
+Sub del_presets()
+Range(Cells(63, 55), Cells(2500, 56)).ClearContents
+Range(Cells(63, 58), Cells(2500, 80)).ClearContents
+Range(Cells(63, 279), Cells(2500, 282)).ClearContents
+
+End Sub
+
+Sub ipres() ' заполняет персетами каждый источник
+gYes = 0
+ answer = MsgBox("Заполнение пресетов для всех точек из единых КЛИШЕ!!!" + Chr(13) + Chr(10) + "Удалить все ранее установленные пресеты и заполнить из КЛИШЕ?", vbQuestion + vbYesNo + vbDefaultButton2, "Внимание!")
+If answer = vbYes Then gYes = 1
+If gYes = 1 Then
+If Worksheets("CODE").Cells(5, 58).Value < 2 Then Application.ScreenUpdating = False
+Worksheets("CODE").Activate
+Range("BC63:BD2500").ClearContents
+Range("BF63:CB2500").ClearContents
+' считаем число источников
+i = 0
+b = 0
+II0 = 0
+Do
+a = Cells(63 + i, 54).Value
+If a = "" Then
+b = 1
+Else
+i = i + 1
+If Worksheets("CODE").Cells(62 + i, 54).Interior.Color = RGB(200, 50, 50) Then
+II0 = II0 + 1
+End If
+End If
+Loop While b = 0
+chi = i
+
+
+'Cells(60, 49).Value = dd
+For i = 1 To chi
+
+Worksheets("CODE").Cells(62 + i, 55).Value = Format((Worksheets("CODE").Cells(3, 55).Value + Worksheets("CODE").Cells(3, 55).Value * (5 - Rnd(1) * 10) / 1000) * 1000000, 0#) / 1000000 ' давления
+Worksheets("CODE").Cells(62 + i, 56).Value = Worksheets("CODE").Cells(5, 55).Value ' температура
+Worksheets("CODE").Cells(62 + i, 59).Value = Worksheets("CODE").Cells(6, 55).Value ' уровень
+For j = 1 To 21
+Worksheets("CODE").Cells(62 + i, 59 + j).Value = Worksheets("CODE").Cells(6 + j, 55).Value ' свойства
+If Worksheets("CODE").Cells(6 + j, 55).Value = "" Then Worksheets("CODE").Cells(62 + i, 59 + j).Value = ""
+If Worksheets("CODE").Cells(6 + j, 51).Value = "" Then Worksheets("CODE").Cells(62 + i, 59 + j).Value = ""
+Next j
+Next i
+
+
+' считаем число кранов
+i = 0
+b = 0
+Do
+a = Cells(63 + i, 57).Value
+If a = "" Then
+b = 1
+Else
+i = i + 1
+End If
+Loop While b = 0
+chK = i
+
+
+For i = 1 To chK
+Worksheets("CODE").Cells(62 + i, 58).Value = 1 ' клапана
+Next i
+
+
+aa = Worksheets.Count
+shsv = 0
+For i = 1 To aa
+bb = Worksheets(i).Name
+If Not bb = "CODE" Then
+If Not bb = "EX" Then
+For j = 5 To 131 Step 7
+If Len(Worksheets(bb).Cells(j, 7).Value) > 1 Then
+shsv = shsv + 1
+End If
+Next j
+End If
+End If
+Next i
+shsv = shsv - (chi - II0)
+
+For i = 87 To 109
+If Len(Cells(i, 19).Value) > 2 Then shsv = shsv + 1
+Next i
+
+Cells(57, 56).Value = "*-число точек связи " + Str(shsv)
+Cells(58, 56).Value = "*-число листов с источниками " + Str(Worksheets.Count - 2)
+Cells(59, 56).Value = "*-число источников " + Str(chi) + " (" + Str(II0) + "-безусл., " + Str(chi - II0) + "-усл.)"
+Cells(60, 56).Value = "*-число арматур " + Str(chK)
+
+End If ' gYes
+Application.ScreenUpdating = True
+End Sub
+
+Sub stati()
+If Worksheets("CODE").Cells(5, 58).Value < 2 Then Application.ScreenUpdating = False
+gYes = 1
+If gYes = 1 Then
+' считаем число источников
+i = 0
+b = 0
+II0 = 0
+Do
+a = Cells(63 + i, 54).Value
+If a = "" Then
+b = 1
+Else
+i = i + 1
+If Worksheets("CODE").Cells(62 + i, 54).Interior.Color = RGB(200, 50, 50) Then
+II0 = II0 + 1
+End If
+End If
+Loop While b = 0
+chi = i
+
+
+' считаем число кранов
+i = 0
+b = 0
+Do
+a = Cells(63 + i, 57).Value
+If a = "" Then
+b = 1
+Else
+i = i + 1
+End If
+Loop While b = 0
+chK = i
+
+
+aa = Worksheets.Count
+shsv = 0
+For i = 1 To aa
+Call PrPro(100 * (i - 2) / (aa - 2 + 0.0000000001), "Сбор статистики!")
+bb = Worksheets(i).Name
+If Not bb = "CODE" Then
+If Not bb = "EX" Then
+For j = 5 To 131 Step 7
+If Len(Worksheets(bb).Cells(j, 7).Value) > 1 Then
+shsv = shsv + 1
+End If
+Next j
+End If
+End If
+Next i
+shsv = shsv - (chi - II0)
+
+For i = 87 To 109
+If Len(Cells(i, 19).Value) > 2 Then shsv = shsv + 1
+Next i
+
+Cells(57, 56).Value = "*-число точек связи " + Str(shsv)
+Cells(58, 56).Value = "*-число листов с источниками " + Str(Worksheets.Count - 2)
+Cells(59, 56).Value = "*-число источников " + Str(chi) + " (" + Str(II0) + "-безусл., " + Str(chi - II0) + "-усл.)"
+Cells(60, 56).Value = "*-число арматур " + Str(chK)
+End If
+Application.ScreenUpdating = True
+End Sub
+
+
+Sub Кнопка18_Щелчок()
+If Worksheets("CODE").Cells(5, 58).Value < 2 Then Application.ScreenUpdating = False
+aa = Worksheets.Count
+For i = 1 To aa
+bb = Worksheets(i).Name
+If Not bb = "CODE" Then
+If Not bb = "EX" Then
+Worksheets(i).Activate
+For j = 5 To 131 Step 7
+If Cells(j, 7).Value = "" Then
+Cells(j + 3, 7).Value = ""
+Range(Cells(j, 9), Cells(j + 2, 28)).ClearContents
+End If
+Next j
+End If
+End If
+Next i
+Application.ScreenUpdating = True
+Worksheets("CODE").Activate
+End Sub
+
+Sub gyt()
+ish11 = Cells(4, 7).Value
+ish12 = Replace(ish11, "=", ":=")
+
+Cells(12, 7).Value = ish12
+
+
+
+' начало и ввод строки
+ish21 = Cells(10, 7).Value
+
+ish22 = Replace(ish21, "=", ":=")
+ish22 = Replace(ish22, "* Math.Abs(", "* Abs(")
+
+f_a = InStr(ish22, "Math.Pow(Math.Abs(")
+if_a = InStr(ish22, "if")
+double_a = InStr(ish22, "double")
+
+If f_a > 0 Then ' для расхода
+ish22 = Replace(ish22, "* Math.Pow(Math.Abs(", "* Sqrt(Abs(")
+ish22 = Replace(ish22, "), 0.5) *", ")) *")
+
+' ищем Math.Pow((
+a1 = InStr(ish22, ",")
+a2 = Right(ish22, Len(ish22) - a1)
+a3 = InStr(a2, ")")
+a41 = Left(a2, a3 - 1) ' коэффициент степени
+
+a1 = InStr(ish22, "Math.Pow")
+a2 = Right(ish22, Len(ish22) - a1 - 9)
+a3 = InStr(a2, "*")
+a42 = Left(a2, a3 - 1) ' коэффициент задвижки
+
+a1 = InStr(a2, "*")
+a2 = Right(a2, Len(a2) - a1 - 1)
+a3 = InStr(a2, ")")
+a43 = Left(a2, a3 - 1) ' имя задвижки
+
+'формируем запись
+a44 = "Exp(" + a41 + " * Ln(" + a42 + " * " + a43 + "))"
+
+a1 = InStr(ish22, "Math.Pow")
+a2 = Left(ish22, a1 - 1) 'левая часть
+a3 = InStr(ish22, "Sqrt")
+a4 = Right(ish22, Len(ish22) - a3 + 4) ' правая часть
+
+a45 = a2 + a44 + a4
+End If
+
+If if_a > 0 Then
+a1 = InStr(ish22, ")")
+a2 = Left(ish22, a1)  'левая часть
+a3 = Right(ish22, Len(ish22) - a1)  ' правая часть
+Dim ddf As String
+a45 = a2 + " then" + Chr(13) + Chr(10) + a3
+End If
+
+If double_a > 0 Then
+a2 = Right(ish22, Len(ish22) - 7)
+a3 = InStr(a2, ":")
+a4 = Left(a2, a3 - 2) 'имя переменной
+a45 = a4 + ": Double;"
+End If
+'конец и вывод строки
+Cells(14, 7).Value = a45
+
+End Sub
+

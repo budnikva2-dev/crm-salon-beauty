@@ -1,0 +1,36 @@
+MODULE	TYPE	LINES	CHARS	FILE
+Module1	Module	6437	306355	Module1.txt
+ЭтаКнига	Document	328	8111	_Sheets.txt
+UserForm1	Form	928	24704	UserForm1.txt
+UserForm2	Form	21	401	UserForm2.txt
+UserForm3	Form	28	490	UserForm3.txt
+UserForm4	Form	31	921	UserForm4.txt
+UserForm5	Form	25	415	UserForm5.txt
+Module2	Module	25783	819387	Module2.txt
+Лист4	Document	11	165	_Sheets.txt
+Module3	Module	7618	304974	Module3.txt
+Module4	Module	251	5920	Module4.txt
+Module5	Module	1922	44278	Module5.txt
+Module6	Module	1803	91403	Module6.txt
+Module7	Module	2481	104911	Module7.txt
+Module8	Module	475	9067	Module8.txt
+UserForm6	Form	190	4867	UserForm6.txt
+ufProgress	Form	7	72	ufProgress.txt
+Module9	Module	90	2348	Module9.txt
+UserForm7	Form	23	1148	UserForm7.txt
+Module10	Module	536	16368	Module10.txt
+UserForm8	Form	103	2984	UserForm8.txt
+UserForm9	Form	108	2327	UserForm9.txt
+UserForm10	Form	35	804	UserForm10.txt
+UserForm11	Form	85	2092	UserForm11.txt
+UserForm12	Form	22	566	UserForm12.txt
+UserForm13	Form	327	8845	UserForm13.txt
+UserForm14	Form	62	1401	UserForm14.txt
+UserForm15	Form	929	25950	UserForm15.txt
+Module11	Module	502	29146	Module11.txt
+Module12	Module	1984	108668	Module12.txt
+Module13	Module	1063	98803	Module13.txt
+Module14	Module	400	14999	Module14.txt
+Module15	Module	1349	69017	Module15.txt
+
+TOTAL		55957		32 files

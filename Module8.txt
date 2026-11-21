@@ -1,0 +1,475 @@
+Sub PrPro_old(progr As Double, procName As String)
+If progr > 100 Then progr = 100
+If progr < 0 Then progr = 0
+ufProgress.Label3.Caption = ">>> " + procName
+ufProgress.Label2.Width = 0.01 + progr / 100 * ufProgress.FrameProgress.Width
+ufProgress.Label1.Caption = Str(Format(progr * 100, 0#) / 100) + "%"
+If InStr(ufProgress.Label1.Caption, ".") = 0 Then ufProgress.Label1.Caption = Replace(ufProgress.Label1.Caption, "%", ".0%")
+If InStr(ufProgress.Label1.Caption, ".") > 0 Then
+aa1 = Right(ufProgress.Label1.Caption, Len(ufProgress.Label1.Caption) - InStr(ufProgress.Label1.Caption, ".") + 1)
+If Len(aa1) < 4 Then
+ufProgress.Label1.Caption = Replace(ufProgress.Label1.Caption, "%", "0%")
+End If
+End If
+DoEvents
+End Sub
+
+
+Sub Кнопка70_Щелчок()
+
+End Sub
+
+Sub ist_u1()
+i = 1
+Cells(i * 7 + 1, 7).Value = 2
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_bu1()
+i = 1
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_ubu1()
+i = 1
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(17, 1).Interior.Color
+End Sub
+
+
+
+Sub ist_u2()
+i = 2
+Cells(i * 7 + 1, 7).Value = 2
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_bu2()
+i = 2
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_ubu2()
+i = 2
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(17, 1).Interior.Color
+End Sub
+
+
+Sub ist_u3()
+i = 3
+Cells(i * 7 + 1, 7).Value = 2
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_bu3()
+i = 3
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_ubu3()
+i = 3
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(17, 1).Interior.Color
+End Sub
+
+
+Sub ist_u4()
+i = 4
+Cells(i * 7 + 1, 7).Value = 2
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_bu4()
+i = 4
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_ubu4()
+i = 4
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(17, 1).Interior.Color
+End Sub
+
+
+Sub ist_u5()
+i = 5
+Cells(i * 7 + 1, 7).Value = 2
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_bu5()
+i = 5
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_ubu5()
+i = 5
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(17, 1).Interior.Color
+End Sub
+
+
+Sub ist_u6()
+i = 6
+Cells(i * 7 + 1, 7).Value = 2
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_bu6()
+i = 6
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_ubu6()
+i = 6
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(17, 1).Interior.Color
+End Sub
+
+
+Sub ist_u7()
+i = 7
+Cells(i * 7 + 1, 7).Value = 2
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_bu7()
+i = 7
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_ubu7()
+i = 7
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(17, 1).Interior.Color
+End Sub
+
+
+Sub ist_u8()
+i = 8
+Cells(i * 7 + 1, 7).Value = 2
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_bu8()
+i = 8
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_ubu8()
+i = 8
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(17, 1).Interior.Color
+End Sub
+
+
+Sub ist_u9()
+i = 9
+Cells(i * 7 + 1, 7).Value = 2
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_bu9()
+i = 9
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_ubu9()
+i = 9
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(17, 1).Interior.Color
+End Sub
+
+
+Sub ist_u10()
+i = 10
+Cells(i * 7 + 1, 7).Value = 2
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_bu10()
+i = 10
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_ubu10()
+i = 10
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(17, 1).Interior.Color
+End Sub
+
+
+Sub ist_u11()
+i = 11
+Cells(i * 7 + 1, 7).Value = 2
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_bu11()
+i = 11
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_ubu11()
+i = 11
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(17, 1).Interior.Color
+End Sub
+
+
+Sub ist_u12()
+i = 12
+Cells(i * 7 + 1, 7).Value = 2
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_bu12()
+i = 12
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_ubu12()
+i = 12
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(17, 1).Interior.Color
+End Sub
+
+
+Sub ist_u13()
+i = 13
+Cells(i * 7 + 1, 7).Value = 2
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_bu13()
+i = 13
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_ubu13()
+i = 13
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(17, 1).Interior.Color
+End Sub
+
+
+Sub ist_u14()
+i = 14
+Cells(i * 7 + 1, 7).Value = 2
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_bu14()
+i = 14
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_ubu14()
+i = 14
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(17, 1).Interior.Color
+End Sub
+
+
+Sub ist_u15()
+i = 15
+Cells(i * 7 + 1, 7).Value = 2
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_bu15()
+i = 15
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_ubu15()
+i = 15
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(17, 1).Interior.Color
+End Sub
+
+
+Sub ist_u16()
+i = 16
+Cells(i * 7 + 1, 7).Value = 2
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_bu16()
+i = 16
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_ubu16()
+i = 16
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(17, 1).Interior.Color
+End Sub
+
+
+Sub ist_u17()
+i = 17
+Cells(i * 7 + 1, 7).Value = 2
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_bu17()
+i = 17
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_ubu17()
+i = 17
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(17, 1).Interior.Color
+End Sub
+
+
+Sub ist_u18()
+i = 18
+Cells(i * 7 + 1, 7).Value = 2
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_bu18()
+i = 18
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_ubu18()
+i = 18
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(17, 1).Interior.Color
+End Sub
+
+
+Sub ist_u19()
+i = 19
+Cells(i * 7 + 1, 7).Value = 2
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_bu19()
+i = 19
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(5, 7).Interior.Color
+End Sub
+
+Sub ist_ubu19()
+i = 19
+Cells(i * 7 + 1, 7).Value = 1
+Cells(i * 7 + 1, 7).Interior.Color = Cells(17, 1).Interior.Color
+End Sub
+
+Sub TIPsv(ts As Single)
+
+j = ts * 7
+If Cells(4 + ts * 7, 5).Value = 1 Then
+For jj = 9 To 25 Step 2
+Cells(j, jj).Interior.Color = Cells(j - 1, jj).Interior.Color
+Cells(j, jj + 1).Interior.Color = Cells(j - 1, jj + 1).Interior.Color
+Next jj
+Cells(j, 8).Value = "лин.3"
+Else
+For jj = 9 To 25 Step 2
+Cells(j, jj).Interior.Color = Worksheets(1).Cells(5, 58).Interior.Color
+Cells(j, jj + 1).Interior.Color = Worksheets(1).Cells(13, 57).Interior.Color
+Next jj
+Cells(j, 8).Value = "выд. лин.3"
+End If
+
+End Sub
+
+Sub TIPsv1()
+Call TIPsv(1)
+End Sub
+
+Sub TIPsv2()
+Call TIPsv(2)
+End Sub
+
+Sub TIPsv3()
+Call TIPsv(3)
+End Sub
+
+Sub TIPsv4()
+Call TIPsv(4)
+End Sub
+
+Sub TIPsv5()
+Call TIPsv(5)
+End Sub
+
+Sub TIPsv6()
+Call TIPsv(6)
+End Sub
+Sub TIPsv7()
+Call TIPsv(7)
+End Sub
+
+Sub TIPsv8()
+Call TIPsv(8)
+End Sub
+
+Sub TIPsv9()
+Call TIPsv(9)
+End Sub
+
+Sub TIPsv10()
+Call TIPsv(10)
+End Sub
+
+Sub TIPsv11()
+Call TIPsv(11)
+End Sub
+
+Sub TIPsv12()
+Call TIPsv(12)
+End Sub
+
+Sub TIPsv13()
+Call TIPsv(13)
+End Sub
+
+Sub TIPsv14()
+Call TIPsv(14)
+End Sub
+
+Sub TIPsv15()
+Call TIPsv(15)
+End Sub
+
+Sub TIPsv16()
+Call TIPsv(16)
+End Sub
+
+Sub TIPsv17()
+Call TIPsv(17)
+End Sub
+
+Sub TIPsv18()
+Call TIPsv(18)
+End Sub
+
+Sub TIPsv19()
+Call TIPsv(19)
+End Sub
